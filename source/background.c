@@ -2350,12 +2350,13 @@ int background_initial_conditions(
       pvecback_integration[pba->index_bi_phi_scf] = pba->phi_ini_scf;
       pvecback_integration[pba->index_bi_phi_prime_scf] = pba->phi_prime_ini_scf;
     }
+    /* ET: corrected this check that was not right in original version of code */
     class_test(!isfinite(pvecback_integration[pba->index_bi_phi_scf]) ||
-               !isfinite(pvecback_integration[pba->index_bi_phi_scf]),
+               !isfinite(pvecback_integration[pba->index_bi_phi_prime_scf]),
                pba->error_message,
                "initial phi = %e phi_prime = %e -> check initial conditions",
                pvecback_integration[pba->index_bi_phi_scf],
-               pvecback_integration[pba->index_bi_phi_scf]);
+               pvecback_integration[pba->index_bi_phi_prime_scf]);
   }
 
   /* Infer pvecback from pvecback_integration */
@@ -2524,6 +2525,7 @@ int background_output_titles(
   class_store_columntitle(titles,"(.)rho_dcdm",pba->has_dcdm);
   class_store_columntitle(titles,"(.)rho_dr",pba->has_dr);
 
+  /* ET: Add new variables to print */
   class_store_columntitle(titles,"(.)rho_scf",pba->has_scf);
   class_store_columntitle(titles,"(.)p_scf",pba->has_scf);
   class_store_columntitle(titles,"(.)p_prime_scf",pba->has_scf);
@@ -2532,6 +2534,13 @@ int background_output_titles(
   class_store_columntitle(titles,"V_scf",pba->has_scf);
   class_store_columntitle(titles,"V'_scf",pba->has_scf);
   class_store_columntitle(titles,"V''_scf",pba->has_scf);
+  class_store_columntitle(titles,"Q_scf",pba->has_scf);
+  class_store_columntitle(titles,"C_scf",pba->has_scf);
+  class_store_columntitle(titles,"dC_scf",pba->has_scf);
+  class_store_columntitle(titles,"ddC_scf",pba->has_scf);
+  class_store_columntitle(titles,"B_cff_scf",pba->has_scf);
+  class_store_columntitle(titles,"B1_scf",pba->has_scf);
+  class_store_columntitle(titles,"B2_scf",pba->has_scf);
 
   class_store_columntitle(titles,"(.)rho_tot",_TRUE_);
   class_store_columntitle(titles,"(.)p_tot",_TRUE_);
@@ -2597,6 +2606,7 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_rho_dcdm],pba->has_dcdm,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_rho_dr],pba->has_dr,storeidx);
 
+    /* ET: Add new variables to print */
     class_store_double(dataptr,pvecback[pba->index_bg_rho_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_p_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_p_prime_scf],pba->has_scf,storeidx);
@@ -2605,6 +2615,13 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_V_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_dV_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_ddV_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_Q_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_C_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_dC_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_ddC_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B_cff_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B1_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B2_scf],pba->has_scf,storeidx);
 
     class_store_double(dataptr,pvecback[pba->index_bg_rho_tot],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_p_tot],_TRUE_,storeidx);
@@ -2721,10 +2738,15 @@ int background_derivs(
   }
 
   if (pba->has_scf == _TRUE_) {
+    /* ET: Modified KG equation including the coupling  and evolution of cdm*/
     /** - Scalar field equation: \f$ \phi'' + 2 a H \phi' + a^2 dV = 0 \f$  (note H is wrt cosmological time)
         written as \f$ d\phi/dlna = phi' / (aH) \f$ and \f$ d\phi'/dlna = -2*phi' - (a/H) dV \f$ */
-    dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
-    dy[pba->index_bi_phi_prime_scf] = - 2*y[pba->index_bi_phi_prime_scf] - a*dV_scf(pba,y[pba->index_bi_phi_scf])/H ;
+    dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf];
+    dy[pba->index_bi_phi_prime_scf] = - y[pba->index_bi_a]*
+      (2*pvecback[pba->index_bg_H]*y[pba->index_bi_phi_prime_scf]
+       + y[pba->index_bi_a]*(dV_scf(pba,y[pba->index_bi_phi_scf])-Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_cdm],y[pba->index_bi_a],pvecback))) ;
+    dy[pba->index_bi_rho_cdm] = -3.*y[pba->index_bi_a]*pvecback[pba->index_bg_H]*y[pba->index_bi_rho_cdm] -
+     ( y[pba->index_bi_phi_prime_scf]*(1./3.)*Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_cdm],y[pba->index_bi_a],pvecback))
   }
 
   return _SUCCESS_;
