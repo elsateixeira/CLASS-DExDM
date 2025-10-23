@@ -2989,101 +2989,124 @@ int background_output_budget(
  and \f$ \rho^{class} \f$ has the proper dimension \f$ Mpc^-2 \f$.
 */
 
-double V_e_scf(struct background *pba,
+
+/* ET: Added potential function here. Can be easily modified here along with its derivatives to include other potentials. */
+double V_scf(struct background *pba,
                double phi
                ) {
   double scf_lambda = pba->scf_parameters[0];
-  //  double scf_alpha  = pba->scf_parameters[1];
-  //  double scf_A      = pba->scf_parameters[2];
-  //  double scf_B      = pba->scf_parameters[3];
+  double scf_V0  = pba->scf_parameters[1];
 
-  return  exp(-scf_lambda*phi);
+  return  scf_V0*(1.e-120)*(1.44983e113)*exp(-scf_lambda*phi);
 }
 
-double dV_e_scf(struct background *pba,
+double dV_scf(struct background *pba,
                 double phi
                 ) {
   double scf_lambda = pba->scf_parameters[0];
-  //  double scf_alpha  = pba->scf_parameters[1];
-  //  double scf_A      = pba->scf_parameters[2];
-  //  double scf_B      = pba->scf_parameters[3];
+  double scf_V0  = pba->scf_parameters[1];
 
-  return -scf_lambda*V_e_scf(pba,phi);
+  return -scf_lambda*V_scf(pba,phi);
 }
 
-double ddV_e_scf(struct background *pba,
+double ddV_scf(struct background *pba,
                  double phi
                  ) {
   double scf_lambda = pba->scf_parameters[0];
-  //  double scf_alpha  = pba->scf_parameters[1];
-  //  double scf_A      = pba->scf_parameters[2];
-  //  double scf_B      = pba->scf_parameters[3];
+  double scf_V0  = pba->scf_parameters[1];
 
-  return pow(-scf_lambda,2)*V_e_scf(pba,phi);
+  return pow(-scf_lambda,2)*V_scf(pba,phi);
 }
 
 
-/** parameters and functions for the polynomial coefficient
- * \f$ V_p = (\phi - B)^\alpha + A \f$(polynomial bump)
- *
- * double scf_alpha = 2;
- *
- * double scf_B = 34.8;
- *
- * double scf_A = 0.01; (values for their Figure 2)
- */
-
-double V_p_scf(
-               struct background *pba,
-               double phi) {
-  //  double scf_lambda = pba->scf_parameters[0];
-  double scf_alpha  = pba->scf_parameters[1];
-  double scf_A      = pba->scf_parameters[2];
-  double scf_B      = pba->scf_parameters[3];
-
-  return  pow(phi - scf_B,  scf_alpha) +  scf_A;
-}
-
-double dV_p_scf(
-                struct background *pba,
-                double phi) {
-
-  //  double scf_lambda = pba->scf_parameters[0];
-  double scf_alpha  = pba->scf_parameters[1];
-  //  double scf_A      = pba->scf_parameters[2];
-  double scf_B      = pba->scf_parameters[3];
-
-  return   scf_alpha*pow(phi -  scf_B,  scf_alpha - 1);
-}
-
-double ddV_p_scf(
-                 struct background *pba,
-                 double phi) {
-  //  double scf_lambda = pba->scf_parameters[0];
-  double scf_alpha  = pba->scf_parameters[1];
-  //  double scf_A      = pba->scf_parameters[2];
-  double scf_B      = pba->scf_parameters[3];
-
-  return  scf_alpha*(scf_alpha - 1.)*pow(phi -  scf_B,  scf_alpha - 2);
-}
-
-/** Fianlly we can obtain the overall potential \f$ V = V_p*V_e \f$
- */
-
-double V_scf(
+/* ET: Added conformal function here. Can be easily modified along with its derivatives to include other couplings */
+double C_scf(
              struct background *pba,
-             double phi) {
-  return  V_e_scf(pba,phi)*V_p_scf(pba,phi);
+             double phi
+           ) {
+
+  double scf_beta  = pba->scf_parameters[2];
+
+  return exp(2.*scf_beta*phi);;
 }
 
-double dV_scf(
-              struct background *pba,
-              double phi) {
-  return dV_e_scf(pba,phi)*V_p_scf(pba,phi) + V_e_scf(pba,phi)*dV_p_scf(pba,phi);
+double dC_scf(
+             struct background *pba,
+             double phi
+           ) {
+
+  double scf_beta  = pba->scf_parameters[2];
+
+  return 2.*scf_beta*exp(2.*scf_beta*phi);
 }
 
-double ddV_scf(
-               struct background *pba,
-               double phi) {
-  return ddV_e_scf(pba,phi)*V_p_scf(pba,phi) + 2*dV_e_scf(pba,phi)*dV_p_scf(pba,phi) + V_e_scf(pba,phi)*ddV_p_scf(pba,phi);
+double ddC_scf(
+             struct background *pba,
+             double phi
+           ) {
+
+  double scf_beta  = pba->scf_parameters[2];
+
+  return pow(2.*scf_beta,2.0)*exp(2.*scf_beta*phi);
 }
+
+/* ET: Added coupling function here in terms of the conformal function. Can be easily modified to other functional dependances */
+double Q_scf(
+             struct background *pba,
+             double phi,
+             double phi_prime,
+             double rho_cdm,
+             double a,
+             double *pvecback) {
+
+  double scf_beta  = pba->scf_parameters[2];
+
+  //return - 6.0*rho_cdm/phi;
+
+  return - 3.0*rho_cdm*dC_scf(pba,phi)/(2.*C_scf(pba,phi));
+
+   // return 0;
+}
+
+/* ET: The functions below are used in perturbations.c to define the coupling perturbation delta_Q_scf */
+double B_cff_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_cdm,
+                double a,
+                double * pvecback) { //coefficient of delta Q used in the perturbation module
+
+  double scf_beta  = pba->scf_parameters[2];
+
+  return - 3.0*rho_cdm/(a*a*C_scf(pba,phi));
+    // return 0.0;
+
+}
+
+double B1_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_cdm,
+                double a,
+                double * pvecback) { //B1 in delta Q used in the perturbation module
+
+  double scf_beta  = pba->scf_parameters[2];
+
+  return (1./2.)*a*a*dC_scf(pba,phi);
+
+}
+
+double B2_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_cdm,
+                double a,
+                double * pvecback) { //B2 in delta Q used in the perturbation module
+
+  double scf_beta  = pba->scf_parameters[2];
+
+  return (1./2.)*a*a*ddC_scf(pba,phi) + Q_scf(pba,phi,phi_prime,rho_cdm,a,pvecback)*a*a*dC_scf(pba,phi)/(3.0*rho_cdm);
+                }
