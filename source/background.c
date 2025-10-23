@@ -981,6 +981,8 @@ int background_indices(
   pba->has_dcdm = _FALSE_;
   pba->has_dr = _FALSE_;
   pba->has_scf = _FALSE_;
+  /*ET: coupling flag */
+  pba->has_coupling = _FALSE_;
   pba->has_lambda = _FALSE_;
   pba->has_fld = _FALSE_;
   pba->has_ur = _FALSE_;
@@ -1005,6 +1007,10 @@ int background_indices(
 
   if (pba->Omega0_scf != 0.)
     pba->has_scf = _TRUE_;
+
+  /*ET: coupling flag - for now just assume that if there is scf there is coupling but change at some point */  
+  if (pba->Omega0_scf != 0.)
+    pba->has_coupling = _TRUE_;
 
   if (pba->Omega0_lambda != 0.)
     pba->has_lambda = _TRUE_;
