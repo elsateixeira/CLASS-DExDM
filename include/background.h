@@ -605,37 +605,37 @@ extern "C" {
                   );
 
   /** Coupling between scalar field and matter **/
-   double Q_scf(
+  double Q_scf(
+              struct background *pba,
+              double phi,
+              double phi_prime,
+              double rho_cdm,
+              double a,
+              double *pvecback);
+
+  double B_cff_scf(
                 struct background *pba,
                 double phi,
                 double phi_prime,
                 double rho_cdm,
                 double a,
-                double *pvecback);
+                double * pvecback);
 
-    double B_cff_scf(
-                  struct background *pba,
-                  double phi,
-                  double phi_prime,
-                  double rho_cdm,
-                  double a,
-                  double * pvecback);
+  double B1_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_cdm,
+                double a,
+                double * pvecback);
 
-    double B1_scf(
-                  struct background *pba,
-                  double phi,
-                  double phi_prime,
-                  double rho_cdm,
-                  double a,
-                  double * pvecback);
-
-    double B2_scf(
-                  struct background *pba,
-                  double phi,
-                  double phi_prime,
-                  double rho_cdm,
-                  double a,
-                  double * pvecback);
+  double B2_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_cdm,
+                double a,
+                double * pvecback);
 
 #ifdef __cplusplus
 }
