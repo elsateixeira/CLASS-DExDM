@@ -397,7 +397,8 @@ int background_functions(
   /* fluid's time-dependent equation of state parameter */
   double w_fld, dw_over_da, integral_fld;
   /* scalar field quantities */
-  double phi, phi_prime;
+  /* ET: Added extra variables here */
+  double phi, phi_prime, rho_cdm, V0_scf;
   /* Since we only know a_prime_over_a after we have rho_tot,
      it is not possible to simply sum up p_tot_prime directly.
      Instead we sum up dp_dloga = p_prime/a_prime_over_a. The formula is
@@ -434,12 +435,22 @@ int background_functions(
   p_tot += 0;
   rho_m += pvecback[pba->index_bg_rho_b];
 
+  /* ET: Modified input for coupled CDM*/
+  if (pba->has_cdm == _TRUE_ && pba->has_coupling == _TRUE_) {
+    pvecback[pba->index_bg_rho_cdm] = pvecback_B[pba->index_bi_rho_cdm]; /** integrated CDM energy density */
+    rho_tot += pvecback[pba->index_bg_rho_cdm];
+    p_tot += 0.;
+    rho_m += pvecback[pba->index_bg_rho_cdm];
+    rho_cdm = pvecback_B[pba->index_bi_rho_cdm];
+  }
+
   /* cdm */
-  if (pba->has_cdm == _TRUE_) {
+  if (pba->has_cdm == _TRUE_ && pba->has_coupling == _FALSE_) {
     pvecback[pba->index_bg_rho_cdm] = pba->Omega0_cdm * pow(pba->H0,2) / pow(a,3);
     rho_tot += pvecback[pba->index_bg_rho_cdm];
     p_tot += 0.;
     rho_m += pvecback[pba->index_bg_rho_cdm];
+    rho_cdm = pvecback[pba->index_bg_rho_cdm];
   }
 
   /* idm */
