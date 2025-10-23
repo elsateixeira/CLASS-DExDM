@@ -1095,14 +1095,22 @@ int background_indices(
   class_define_index(pba->index_bg_rho_dr,pba->has_dr,index_bg,1);
 
   /* - indices for scalar field */
+  /* ET: Added corresponding extra indices here - keep the flag as has_scf since it's just functions of phi */
   class_define_index(pba->index_bg_phi_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_phi_prime_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_V_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_dV_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_ddV_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_C_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_dC_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_ddC_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_rho_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_p_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_p_prime_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_Q_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_B_cff_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_B1_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_B2_scf,pba->has_scf,index_bg,1);
 
   /* - index for Lambda */
   class_define_index(pba->index_bg_rho_lambda,pba->has_lambda,index_bg,1);
@@ -1186,6 +1194,10 @@ int background_indices(
 
   /* -> index for conformal time in vector of variables to integrate */
   class_define_index(pba->index_bi_tau,_TRUE_,index_bi,1);
+
+  /* -> energy density in CDM */
+  /* ET: Modified need for CDM evolution depending on coupling */
+  class_define_index(pba->index_bi_rho_cdm,(pba->has_cdm && pba->has_coupling),index_bi,1);
 
   /* -> energy density in DCDM */
   class_define_index(pba->index_bi_rho_dcdm,pba->has_dcdm,index_bi,1);
@@ -2087,6 +2099,10 @@ int background_solve(
                -pba->background_table[pba->index_bg_rho_g])
     /(7./8.*pow(4./11.,4./3.)*pba->background_table[pba->index_bg_rho_g]);
 
+  /* ET: Check the value of V0 after shooting */
+  if (pba->has_scf == _TRUE_)
+    pba->V0_scf = pvecback[pba->index_bg_V_scf]/((1.e-120)*(1.44983e113));
+  /** - done */
   /** - send information to standard output */
   if (pba->background_verbose > 0) {
     printf(" -> age = %f Gyr\n",pba->age);
@@ -2175,7 +2191,8 @@ int background_initial_conditions(
   double a;
 
   double rho_ncdm, p_ncdm, rho_ncdm_rel_tot=0.;
-  double f,Omega_rad, rho_rad;
+  /* ET: Added extra cdm variables here */
+  double f,Omega_rad, rho_rad, Omega_cdm, rho_cdm;
   int counter,is_early_enough,n_ncdm;
   double scf_lambda;
   double rho_fld_today;
@@ -2285,6 +2302,24 @@ int background_initial_conditions(
     /* rho_fld at initial time */
     pvecback_integration[pba->index_bi_rho_fld] = rho_fld_today * exp(integral_fld);
 
+  }
+
+  /** Coupled CDM */
+  /* ET: Added here CDM evolution according to shooting of Omega_ini_cdm */
+ if (pba->has_cdm == _TRUE_ && pba->has_coupling == _TRUE_){
+    /* Remember that the critical density today in CLASS conventions is H0^2 */
+    Omega_cdm = pba->Omega0_cdm;
+    pvecback_integration[pba->index_bi_rho_cdm] =
+      pba->Omega_ini_cdm*pba->H0*pba->H0*pow(pba->a_today/a,3);
+    //if (pba->background_verbose > 2)
+    /** printf("Density is %g. a_today=%g. H_today=%g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_cdm],pba->a_today,pba->H0,pba->Omega_ini_cdm); */
+  }
+
+ if (pba->has_cdm == _TRUE_ && pba->has_coupling == _FALSE_){
+    /* Remember that the critical density today in CLASS conventions is H0^2 */
+    Omega_cdm = pba->Omega0_cdm;
+    //if (pba->background_verbose > 2)
+    /** printf("Density is %g. a_today=%g. H_today=%g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_cdm],pba->a_today,pba->H0,pba->Omega_ini_cdm); */
   }
 
   /** - Fix initial value of \f$ \phi, \phi' \f$
