@@ -535,7 +535,9 @@ int input_shooting(struct file_content * pfc,
                                        "omega_dcdmdr",
                                        "Omega_scf",
                                        "Omega_ini_dcdm",
-                                       "omega_ini_dcdm"};
+                                       "omega_ini_dcdm",
+                                       "Omega_idm",             /* ET: Added initial condition for idm shooting */
+                                       "omega_idm"};            /* ET: Added initial condition for idm shooting */
 
   /* array of corresponding parameters that must be adjusted in order to meet the target (= unknown parameters) */
   char * const unknown_namestrings[] = {"h",                        /* unknown param for target '100*theta_s' */
@@ -545,7 +547,9 @@ int input_shooting(struct file_content * pfc,
                                         "omega_ini_dcdm",           /* unknown param for target 'omega_dcdmdr' */
                                         "scf_shooting_parameter",   /* unknown param for target 'Omega_scf' */
                                         "Omega_dcdmdr",             /* unknown param for target 'Omega_ini_dcdm' */
-                                        "omega_dcdmdr"};             /* unknown param for target 'omega_ini_dcdm' */
+                                        "omega_dcdmdr",             /* unknown param for target 'omega_ini_dcdm' */
+                                        "Omega_ini_idm",             /* ET: unknown param for target 'Omega_idm' */
+                                        "omega_ini_idm"};            /* ET: unknown param for target 'omega_idm' */
 
   /* for each target, module up to which we need to run CLASS in order
      to compute the targetted quantities (not running the whole code
@@ -557,7 +561,9 @@ int input_shooting(struct file_content * pfc,
                                         cs_background,     /* computation stage for target 'omega_dcdmdr' */
                                         cs_background,     /* computation stage for target 'Omega_scf' */
                                         cs_background,     /* computation stage for target 'Omega_ini_dcdm' */
-                                        cs_background};     /* computation stage for target 'omega_ini_dcdm' */
+                                        cs_background,     /* computation stage for target 'omega_ini_dcdm' */
+                                        cs_background,     /* ET: computation stage for target 'Omega_idm' */
+                                        cs_background};    /* ET: computation stage for target 'omega_idm' */
 
   struct fzerofun_workspace fzw;
 
@@ -879,6 +885,8 @@ int input_needs_shooting_for_target(struct file_content * pfc,
   case Omega_scf:
   case Omega_ini_dcdm:
   case omega_ini_dcdm:
+  case Omega_idm: /* ET: Added cdm cases here */
+  case omega_idm: /* ET: Added cdm cases here */
     /* Check that Omega's or omega's are nonzero: */
     if (target_value == 0.)
       *needs_shooting = _FALSE_;
@@ -1232,6 +1240,7 @@ int input_get_guess(double *xguess,
       break;
     case Omega_scf:
       /* *
+       * ET: In this case keep the default shooting for V0 
        * This guess is arbitrary, something nice using WKB should be implemented.
        * Version 2 uses a fit
        * xguess[index_guess] = 1.77835*pow(ba.Omega0_scf,-2./7.);
@@ -1265,7 +1274,17 @@ int input_get_guess(double *xguess,
       if (gamma > 100)
         dxdy[index_guess] *= gamma/100;
       break;
-
+    /* ET: Added idm shooting based on initial value (similar to dcdm above) */
+    case Omega_idm:
+      xguess[index_guess] = pfzw->target_value[index_guess];
+      dxdy[index_guess] = 1.0;
+      printf("x = Omega_ini_guess = %g, dxdy = %g\n",xguess[index_guess],dxdy[index_guess]);
+      break;
+    case omega_idm:
+      xguess[index_guess] = pfzw->target_value[index_guess]/ba.h/ba.h;
+      dxdy[index_guess] = 0.1;//1./ba.h/ba.h;
+      /** printf("x = Omega_ini_guess = %g, dxdy = %g\n",xguess[index_guess],dxdy[index_guess]); */
+      break;
     case sigma8:
       /* Assume linear relationship between A_s and sigma8 and fix coefficient
          according to vanilla LambdaCDM. Should be good enough... */
@@ -1329,7 +1348,7 @@ int input_try_unknown_parameters(double * unknown_parameter,
   struct output op;           /* for output files */
 
   int i;
-  double rho_dcdm_today, rho_dr_today;
+  double rho_dcdm_today, rho_dr_today, rho_idm_today; /* ET: added rho_idm_today */
   struct fzerofun_workspace * pfzw;
   int input_verbose;
   int flag;
@@ -1488,6 +1507,17 @@ int input_try_unknown_parameters(double * unknown_parameter,
       else
         rho_dr_today = 0.;
       output[i] = -(rho_dcdm_today+rho_dr_today)/(ba.H0*ba.H0)+ba.Omega0_dcdmdr;
+      break;
+    /* ET: Added cases for idm shooting */
+    case Omega_idm:
+      rho_idm_today = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_idm];
+      output[i] = (rho_idm_today)/(ba.H0*ba.H0)-pfzw->target_value[i];
+      printf("output[%i] = %.5g. target_value = %e.\n",i,output[i],pfzw->target_value[i]);
+      break;
+    case omega_idm:
+      rho_idm_today = ba.background_table[(ba.bt_size-1)*ba.bg_size+ba.index_bg_rho_idm];
+      output[i] = (rho_idm_today)/(ba.H0*ba.H0)-pfzw->target_value[i]/ba.h/ba.h;
+      /** printf("output[%i] = %.5g. target_value = %e.\n",i,output[i],pfzw->target_value[i]/ba.h/ba.h); */
       break;
     case sigma8:
       output[i] = fo.sigma8[fo.index_pk_m];
@@ -2485,7 +2515,7 @@ int input_read_parameters_species(struct file_content * pfc,
   }
 
 
-  /** 4) Omega_0_cdm (CDM) */
+  /** 4.1) Omega_0_cdm (CDM) */
   /* Read */
   class_call(parser_read_double(pfc,"Omega_cdm",&param1,&flag1,errmsg),
              errmsg,
@@ -2507,6 +2537,44 @@ int input_read_parameters_species(struct file_content * pfc,
     has_cdm_userdefined = _TRUE_;
   }
   class_test(pba->Omega0_cdm<0,errmsg, "You cannot set the cold dark matter density to negative values.");
+
+  /** 4.2) Omega_0_idm (IDM) */
+  /* Read */
+  class_call(parser_read_double(pfc,"Omega_idm",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_double(pfc,"omega_idm",&param2,&flag2,errmsg),
+             errmsg,
+             errmsg);
+  /* Test */
+  class_test(((flag1 == _TRUE_) && (flag2 == _TRUE_)),
+             errmsg,
+             "You can only enter one of 'Omega_idm' or 'omega_idm'.");
+  /* Complete set of parameters */
+  if (flag1 == _TRUE_){
+    pba->Omega0_idm = param1;
+    has_idm_userdefined = _TRUE_;
+  }
+  if (flag2 == _TRUE_){
+    pba->Omega0_idm = param2/pba->h/pba->h;
+    has_idm_userdefined = _TRUE_;
+  }
+  class_test(pba->Omega0_idm<0,errmsg, "You cannot set the interacting dark matter density to negative values.");
+
+  /* ET: Read Omega_ini_idm or omega_ini_idm */
+  class_call(parser_read_double(pfc,"Omega_ini_idm",&param1,&flag1,errmsg),
+             errmsg,
+             errmsg);
+  class_call(parser_read_double(pfc,"omega_ini_idm",&param2,&flag2,errmsg),
+             errmsg,
+             errmsg);
+  class_test(((flag1 == _TRUE_) && (flag2 == _TRUE_)),
+             errmsg,
+             "In input file, you can only enter one of Omega_ini_idm or omega_ini_idm, choose one");
+  if (flag1 == _TRUE_)
+    pba->Omega_ini_idm = param1;
+  if (flag2 == _TRUE_)
+    pba->Omega_ini_idm = param2/pba->h/pba->h;
 
   /** 4) (Second part) Omega_0_m (total non-relativistic) */
   class_call(parser_read_double(pfc,"Omega_m",&param1,&flag1,errmsg),
@@ -3161,6 +3229,7 @@ int input_read_parameters_species(struct file_content * pfc,
     pba->Omega0_cdm = Omega_m_remaining;
   }
 
+  /* ET: Check how this is handled */
   /* When the CDM density is determined we can use the previously collected fractions to determine the corresponding densities. First, make sure everything is reasonable*/
   class_test((f_idm > 0.) && (pba->Omega0_cdm == 0.),
              errmsg,

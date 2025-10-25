@@ -113,7 +113,7 @@ at least the paper `CLASS II: Approximation schemes <http://arxiv.org/abs/1104.2
 How to use for DExDM couplings
 -----------------------------------
 
-You must set omega_cdm=0 or Omega_cdm=0. Replace with omega_idm = 0.1201075 or equivalent. Specify or modify the scf_parameters according to your needs. For the moment scf_parameters=[scf_lambda,scf_V0,...,phi_ini,phi'_ini].
+You must set omega_cdm=0 or Omega_cdm=0. Replace with omega_idm = 0.1201075 or equivalent (f_idm=1, check how this is handled). Specify or modify the scf_parameters according to your needs. For the moment scf_parameters=[scf_lambda,scf_V0,...,phi_ini,phi'_ini].
 
 Support
 -------
