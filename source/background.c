@@ -493,9 +493,9 @@ int background_functions(
       pvecback[pba->index_bg_C_scf] = C_scf(pba,phi); // ET: conformal factor as function of phi
       pvecback[pba->index_bg_dC_scf] = dC_scf(pba,phi); // ET: conformal factor' as function of phi
       pvecback[pba->index_bg_ddC_scf] = ddC_scf(pba,phi); // ET: conformal factor'' as function of phi
-      pvecback[pba->index_bg_D_scf] = C_scf(pba,phi); // ET: disformal factor as function of phi
-      pvecback[pba->index_bg_dD_scf] = dC_scf(pba,phi); // ET: disformal factor' as function of phi
-      pvecback[pba->index_bg_ddD_scf] = ddC_scf(pba,phi); // ET: disformal factor'' as function of phi
+      pvecback[pba->index_bg_D_scf] = D_scf(pba,phi); // ET: disformal factor as function of phi
+      pvecback[pba->index_bg_dD_scf] = dD_scf(pba,phi); // ET: disformal factor' as function of phi
+      pvecback[pba->index_bg_ddD_scf] = ddD_scf(pba,phi); // ET: disformal factor'' as function of phi
     }
   }
 
@@ -597,9 +597,9 @@ int background_functions(
     pvecback[pba->index_bg_B_cff_scf] = B_cff_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
     pvecback[pba->index_bg_B1_scf] = B1_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
     pvecback[pba->index_bg_B2_scf] = B2_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
-    pvecback[pba->index_bg_B3_scf] = B2_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
-    pvecback[pba->index_bg_B4_scf] = B2_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
-    pvecback[pba->index_bg_B5_scf] = B2_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
+    pvecback[pba->index_bg_B3_scf] = B3_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
+    pvecback[pba->index_bg_B4_scf] = B4_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
+    pvecback[pba->index_bg_B5_scf] = B5_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
       }
 
   /* Total energy density*/
@@ -610,11 +610,19 @@ int background_functions(
 
   /* Derivative of total pressure w.r.t. conformal time */
   pvecback[pba->index_bg_p_tot_prime] = a*pvecback[pba->index_bg_H]*dp_dloga;
-  if (pba->has_scf == _TRUE_) {
+  if ((pba->has_scf == _TRUE_) && (pba->has_idm == _TRUE_)) {
     /** The contribution of scf was not added to dp_dloga, add p_scf_prime here: */
     /* ET: Added coupling here */
    pvecback[pba->index_bg_p_prime_scf] = pvecback[pba->index_bg_phi_prime_scf]*
       (-pvecback[pba->index_bg_phi_prime_scf]*pvecback[pba->index_bg_H]/a-2./3.*pvecback[pba->index_bg_dV_scf]+1./3*Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback));
+    pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_scf];
+  }
+
+  if ((pba->has_scf == _TRUE_) && (pba->has_idm == _FALSE_)) {
+    /** The contribution of scf was not added to dp_dloga, add p_scf_prime here: */
+    /* ET: without coupling */
+   pvecback[pba->index_bg_p_prime_scf] = pvecback[pba->index_bg_phi_prime_scf]*
+      (-pvecback[pba->index_bg_phi_prime_scf]*pvecback[pba->index_bg_H]/a-2./3.*pvecback[pba->index_bg_dV_scf]);
     pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_scf];
   }
 
@@ -1069,7 +1077,7 @@ int background_indices(
   /* - index for rho_cdm */
   class_define_index(pba->index_bg_rho_cdm,pba->has_cdm,index_bg,1);
 
-  /* - index for rho_idm  */
+  /* ET: index for rho_idm  */
   class_define_index(pba->index_bg_rho_idm,pba->has_idm,index_bg,1);
 
   /* - indices for ncdm. We only define the indices for ncdm1
@@ -2305,7 +2313,9 @@ int background_initial_conditions(
     /* Remember that the critical density today in CLASS conventions is H0^2 */
     Omega_idm = pba->Omega0_idm;
     pvecback_integration[pba->index_bi_rho_idm] =
-      pba->Omega_ini_idm*pba->H0*pba->H0*pow(pba->a_today/a,3);
+      pba->Omega_ini_idm*pba->H0*pba->H0/pow(a,3);
+    if (pba->background_verbose > 3)
+      printf("Density is %g. Omega_ini=%g\n",pvecback_integration[pba->index_bi_rho_idm],pba->Omega_ini_idm);
   }
 
 
@@ -2621,6 +2631,9 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_B_cff_scf],((pba->has_scf) && (pba->has_idm)),storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_B1_scf],((pba->has_scf) && (pba->has_idm)),storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_B2_scf],((pba->has_scf) && (pba->has_idm)),storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B3_scf],((pba->has_scf) && (pba->has_idm)),storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B4_scf],((pba->has_scf) && (pba->has_idm)),storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B5_scf],((pba->has_scf) && (pba->has_idm)),storeidx);
 
     class_store_double(dataptr,pvecback[pba->index_bg_rho_tot],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_p_tot],_TRUE_,storeidx);
@@ -2745,14 +2758,13 @@ int background_derivs(
 
   if ((pba->has_scf == _TRUE_) && (pba->has_idm == _TRUE_)){
     /** - Scalar field equation: \f$ \phi'' + 2 a H \phi' + a^2 dV = 0 \f$  (note H is wrt cosmic time) */
-    dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf];
-    /* ET: Modified KG equation including the coupling */
-    dy[pba->index_bi_phi_prime_scf] = - y[pba->index_bi_a]*
-      (2*pvecback[pba->index_bg_H]*y[pba->index_bi_phi_prime_scf]
-       + y[pba->index_bi_a]*(dV_scf(pba,y[pba->index_bi_phi_scf])-Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_idm],y[pba->index_bi_a],pvecback))) ;
-    /* ET: Modified CDM equation including the coupling */
-    dy[pba->index_bi_rho_idm] = -3.*y[pba->index_bi_a]*pvecback[pba->index_bg_H]*y[pba->index_bi_rho_idm] -
-     ( y[pba->index_bi_phi_prime_scf]*(1./3.)*Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_idm],y[pba->index_bi_a],pvecback)) ;
+    dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
+    /* ET: Modified KG equation including the coupling: check */
+    dy[pba->index_bi_phi_prime_scf] = - (2*y[pba->index_bi_phi_prime_scf]
+       + a*(dV_scf(pba,y[pba->index_bi_phi_scf])-Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_idm],y[pba->index_bi_a],pvecback))/H) ;
+    /* ET: Modified CDM equation including the coupling: check */
+    dy[pba->index_bi_rho_idm] = -3.*y[pba->index_bi_rho_idm] -
+     (y[pba->index_bi_phi_prime_scf]*(1./3.)*Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_idm],y[pba->index_bi_a],pvecback))/a/H ;
   }
 
   return _SUCCESS_;
@@ -3053,6 +3065,7 @@ double ddC_scf(
 }
 
 /* ET: Added disformal function here. Can be easily modified along with its derivatives to include other couplings */
+/* ET: Have to add right functions */
 double D_scf(
              struct background *pba,
              double phi

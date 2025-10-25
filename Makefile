@@ -6,7 +6,7 @@ MDIR := $(shell pwd)
 WRKDIR = $(MDIR)/build
 
 .base:
-	if ! [ -e $(WRKDIR) ]; then mkdir $(WRKDIR) ; mkdir $(WRKDIR)/lib; fi;
+	if ! [ -d "$(WRKDIR)" ]; then mkdir -p "$(WRKDIR)/lib"; fi;
 	touch build/.base
 
 vpath %.c source:tools:main:test
