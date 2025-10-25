@@ -69,6 +69,9 @@ struct background
 
   double Omega0_idm; /**< \f$ \Omega_{0 idm} \f$: interacting dark matter with photons, baryons, and idr */
 
+  double Omega_ini_idm; /**< \f$ ET: \Omega_{ini,idm} \f$: coupled cold dark matter initial value */
+
+  double omega_ini_idm; /**< \f$ ET: \Omega_{ini,idm} \f$: coupled cold dark matter initial value */
 
   double Omega0_idr; /**< \f$ \Omega_{0 idr} \f$: interacting dark radiation */
   double T_idr;      /**< \f$ T_{idr} \f$: current temperature of interacting dark radiation in Kelvins */
@@ -113,6 +116,7 @@ struct background
                       not [delta p/delta rho] in the synchronous or newtonian gauge!) */
   double Omega_EDE;        /**< \f$ wa_{DE} \f$: Early Dark Energy density parameter */
   double * scf_parameters; /**< list of parameters describing the scalar field potential */
+  double V0_scf;        /**< \f$ ET: \V0_{scf} \f$: shooting parameter scalar field */
   short attractor_ic_scf;  /**< whether the scalar field has attractor initial conditions */
   int scf_tuning_index;    /**< index in scf_parameters used for tuning */
   double phi_ini_scf;      /**< \f$ \phi(t_0) \f$: scalar field initial value */
@@ -181,6 +185,21 @@ struct background
   int index_bg_rho_scf;       /**< scalar field energy density */
   int index_bg_p_scf;         /**< scalar field pressure */
   int index_bg_p_prime_scf;         /**< scalar field pressure */
+
+  /* ET: Added extra scf indices here */
+  int index_bg_C_scf;         /**< scalar field conformal factor C */
+  int index_bg_dC_scf;        /**< scalar field conformal factor derivative C' */
+  int index_bg_ddC_scf;       /**< scalar field conformal factor second derivative C'' */
+  int index_bg_D_scf;         /**< scalar field disformal factor D */
+  int index_bg_dD_scf;        /**< scalar field disformal factor derivative D' */
+  int index_bg_ddD_scf;       /**< scalar field disformal factor second derivative D'' */
+  int index_bg_Q_scf;         /**< scalar field coupling function */
+  int index_bg_B_cff_scf;     /**< scf scalar field perturbed coupling denominator */
+  int index_bg_B1_scf;        /**< scf scalar field perturbed coupling delta_c factor */
+  int index_bg_B2_scf;        /**< scf scalar field perturbed coupling Phi' factor */
+  int index_bg_B3_scf;        /**< scf scalar field perturbed coupling Psi factor */
+  int index_bg_B4_scf;        /**< scf scalar field perturbed coupling delta phi' factor */
+  int index_bg_B5_scf;        /**< scf scalar field perturbed coupling delta phi factor*/
 
   int index_bg_rho_ncdm1;     /**< density of first ncdm species (others contiguous) */
   int index_bg_p_ncdm1;       /**< pressure of first ncdm species (others contiguous) */
@@ -253,6 +272,7 @@ struct background
   //@{
 
   int index_bi_rho_dcdm;/**< {B} dcdm density */
+  int index_bi_rho_idm;  /**< ET: {B} extra index for ide density evolution */
   int index_bi_rho_dr;  /**< {B} dr density */
   int index_bi_rho_fld; /**< {B} fluid density */
   int index_bi_phi_scf;       /**< {B} scalar field value */
@@ -280,7 +300,7 @@ struct background
   //@{
 
   short has_cdm;       /**< presence of cold dark matter? */
-  short has_idm;       /**< presence of interacting dark matter with photons, baryons, and idr */
+  short has_idm;       /**< ET: presence of interacting dark matter with photons, baryons, idr and scf */
   short has_dcdm;      /**< presence of decaying cold dark matter? */
   short has_dr;        /**< presence of relativistic decay radiation? */
   short has_scf;       /**< presence of a scalar field? */
@@ -546,28 +566,113 @@ extern "C" {
                                struct background* pba
                                );
 
-  /** Scalar field potential and its derivatives **/
+  /* ET: Scalar field potential and its derivatives */
   double V_scf(
                struct background *pba,
                double phi
                );
 
   double dV_scf(
+		struct background *pba,
+		double phi
+		);
+
+  double ddV_scf(
+                  struct background *pba,
+                  double phi
+                );
+
+  /* ET: conformal factor and its derivatives */
+
+  double C_scf(
                 struct background *pba,
                 double phi
                 );
 
-  double ddV_scf(
-                 struct background *pba,
-                 double phi
-                 );
+  double dC_scf(
+      struct background *pba,
+      double phi
+    );
 
-  /** Coupling between scalar field and matter **/
+  double ddC_scf(
+                  struct background *pba,
+                  double phi
+                  );
+  
+  /* ET: disformal factor and its derivatives */
+
+  double D_scf(
+                struct background *pba,
+                double phi
+                );
+
+  double dD_scf(
+      struct background *pba,
+      double phi
+    );
+
+  double ddD_scf(
+                  struct background *pba,
+                  double phi
+                  );
+
+  /* ET: Coupling funtion and perturbed coupling coefficients */
+
   double Q_scf(
-               struct background *pba,
-               double phi,
-               double phi_prime
-               );
+              struct background *pba,
+              double phi,
+              double phi_prime,
+              double rho_idm,
+              double a,
+              double *pvecback);
+
+  double B_cff_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_idm,
+                double a,
+                double * pvecback);
+
+  double B1_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_idm,
+                double a,
+                double * pvecback);
+
+  double B2_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_idm,
+                double a,
+                double * pvecback);
+  
+  double B3_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_idm,
+                double a,
+                double * pvecback);
+  
+  double B4_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_idm,
+                double a,
+                double * pvecback);
+
+  double B5_scf(
+                struct background *pba,
+                double phi,
+                double phi_prime,
+                double rho_idm,
+                double a,
+                double * pvecback);
 
 #ifdef __cplusplus
 }
