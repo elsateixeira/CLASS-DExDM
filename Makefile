@@ -7,7 +7,7 @@ WRKDIR = $(MDIR)/build
 
 .base:
 	if ! [ -d "$(WRKDIR)" ]; then mkdir -p "$(WRKDIR)/lib"; fi;
-	touch build/.base
+	touch "$(WRKDIR)/.base"
 
 vpath %.c source:tools:main:test
 vpath %.o build
@@ -19,7 +19,7 @@ vpath .base build
 ########################################################
 
 # your C compiler:
-CC       = gcc
+CC       = gcc-11
 #CC       = icc
 #CC       = pgcc
 CPP      = g++ --std=c++11 -fpermissive -Wno-write-strings
@@ -104,10 +104,10 @@ EXTERNAL += hmcode.opp
 HEADERFILES += $(wildcard ./$(HMCODE)/*.h)
 
 %.o:  %.c .base $(HEADERFILES)
-	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.o
+	cd "$(WRKDIR)";$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.o
 
 %.opp:  %.c .base $(HEADERFILES)
-	cd $(WRKDIR);$(CPP) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.opp
+	cd "$(WRKDIR)";$(CPP) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.opp
 
 TOOLS = growTable.o dei_rkck.o sparse.o evolver_rkck.o  evolver_ndf15.o arrays.opp parser.o quadrature.o hyperspherical.opp common.o trigonometric_integrals.o
 

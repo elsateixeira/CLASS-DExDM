@@ -1105,7 +1105,7 @@ int background_indices(
   /* ET: Added corresponding extra indices here */
   class_define_index(pba->index_bg_C_scf,((pba->has_scf) && (pba->has_idm)),index_bg,1);
   class_define_index(pba->index_bg_dC_scf,((pba->has_scf) && (pba->has_idm)),index_bg,1);
-  class_define_index(pba->index_bg_ddC_scf((pba->has_scf) && (pba->has_idm)),index_bg,1);
+  class_define_index(pba->index_bg_ddC_scf,((pba->has_scf) && (pba->has_idm)),index_bg,1);
   class_define_index(pba->index_bg_D_scf,((pba->has_scf) && (pba->has_idm)),index_bg,1);
   class_define_index(pba->index_bg_dD_scf,((pba->has_scf) && (pba->has_idm)),index_bg,1);
   class_define_index(pba->index_bg_ddD_scf,((pba->has_scf) && (pba->has_idm)),index_bg,1);
@@ -2533,19 +2533,19 @@ int background_output_titles(
   class_store_columntitle(titles,"V''_scf",pba->has_scf);
 
   /* ET: Add new variables to print */
-  class_store_columntitle(titles,"C_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"dC_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"ddC_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"D_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"dD_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"ddD_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"Q_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"B_cff_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"B1_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"B2_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"B3_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"B4_scf",((pba->has_scf) && (pba->has_ide)));
-  class_store_columntitle(titles,"B5_scf",((pba->has_scf) && (pba->has_ide)));
+  class_store_columntitle(titles,"C_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"dC_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"ddC_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"D_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"dD_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"ddD_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"Q_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"B_cff_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"B1_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"B2_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"B3_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"B4_scf",((pba->has_scf) && (pba->has_idm)));
+  class_store_columntitle(titles,"B5_scf",((pba->has_scf) && (pba->has_idm)));
 
   class_store_columntitle(titles,"(.)rho_tot",_TRUE_);
   class_store_columntitle(titles,"(.)p_tot",_TRUE_);
@@ -2761,10 +2761,10 @@ int background_derivs(
     dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
     /* ET: Modified KG equation including the coupling: check */
     dy[pba->index_bi_phi_prime_scf] = - (2*y[pba->index_bi_phi_prime_scf]
-       + a*(dV_scf(pba,y[pba->index_bi_phi_scf])-Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_idm],y[pba->index_bi_a],pvecback))/H) ;
+       + a*(dV_scf(pba,y[pba->index_bi_phi_scf])-Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_idm],a,pvecback))/H) ;
     /* ET: Modified CDM equation including the coupling: check */
     dy[pba->index_bi_rho_idm] = -3.*y[pba->index_bi_rho_idm] -
-     (y[pba->index_bi_phi_prime_scf]*(1./3.)*Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_idm],y[pba->index_bi_a],pvecback))/a/H ;
+     (y[pba->index_bi_phi_prime_scf]*(1./3.)*Q_scf(pba,y[pba->index_bi_phi_scf],y[pba->index_bi_phi_prime_scf],y[pba->index_bi_rho_idm],a,pvecback))/a/H ;
   }
 
   return _SUCCESS_;

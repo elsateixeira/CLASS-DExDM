@@ -2553,11 +2553,11 @@ int input_read_parameters_species(struct file_content * pfc,
   /* Complete set of parameters */
   if (flag1 == _TRUE_){
     pba->Omega0_idm = param1;
-    has_idm_userdefined = _TRUE_;
+    has_cdm_userdefined = _TRUE_;
   }
   if (flag2 == _TRUE_){
     pba->Omega0_idm = param2/pba->h/pba->h;
-    has_idm_userdefined = _TRUE_;
+    has_cdm_userdefined = _TRUE_;
   }
   class_test(pba->Omega0_idm<0,errmsg, "You cannot set the interacting dark matter density to negative values.");
 
