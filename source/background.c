@@ -3040,7 +3040,7 @@ double C_scf(
              double phi
            ) {
 
-  double scf_beta  = pba->scf_parameters[2];
+  double scf_beta  = pba->scf_parameters[2]; // ET: might turn this into input parameter rather than scf_parameter
 
   return exp(2.*scf_beta*phi);;
 }
@@ -3051,6 +3051,7 @@ double dC_scf(
            ) {
 
   double scf_beta  = pba->scf_parameters[2];
+
   return 2.*scf_beta*exp(2.*scf_beta*phi);
 }
 
@@ -3065,15 +3066,17 @@ double ddC_scf(
 }
 
 /* ET: Added disformal function here. Can be easily modified along with its derivatives to include other couplings */
-/* ET: Have to add right functions */
+/* ET: Disformal coefficient and derivatives - read D0 in meV^-1 and convert to D0^4 in mpl^-2*mpc^2 */
 double D_scf(
              struct background *pba,
              double phi
            ) {
 
-  double scf_beta  = pba->scf_parameters[2];
+  double scf_alpha  = pba->scf_parameters[3]; // ET: might turn this into input parameter rather than scf_parameter
+  double scf_D0     = pow(pba->scf_parameters[4], 4)*2.4248e+8; // ET: might turn this into input parameter rather than scf_parameter
 
-  return exp(2.*scf_beta*phi);;
+                                        
+  return  scf_D0*exp(2*scf_alpha*phi);
 }
 
 double dD_scf(
@@ -3081,9 +3084,10 @@ double dD_scf(
              double phi
            ) {
 
-  double scf_beta  = pba->scf_parameters[2];
+  double scf_alpha  = pba->scf_parameters[3]; // ET: might turn this into input parameter rather than scf_parameter
+  //double scf_D0     = pow(pba->scf_parameters[4], 4)*2.4248e+8; // ET: might turn this into input parameter rather than scf_parameter
 
-  return 2.*scf_beta*exp(2.*scf_beta*phi);
+  return  2*scf_alpha*D_scf(pba,phi);
 }
 
 double ddD_scf(
@@ -3091,9 +3095,10 @@ double ddD_scf(
              double phi
            ) {
 
-  double scf_beta  = pba->scf_parameters[2];
+  double scf_alpha  = pba->scf_parameters[3]; // ET: might turn this into input parameter rather than scf_parameter
+  //double scf_D0     = pow(pba->scf_parameters[4], 4)*2.4248e+8; // ET: might turn this into input parameter rather than scf_parameter
 
-  return pow(2.*scf_beta,2.0)*exp(2.*scf_beta*phi);
+  return pow(2*scf_alpha,2.)*D_scf(pba,phi);
 }
 
 /* ET: Added coupling function here in terms of the conformal and disformal functions. Can be easily modified to other functional dependances */
@@ -3105,7 +3110,11 @@ double Q_scf(
              double a,
              double *pvecback) {
 
-  return - 3.0*rho_idm*dC_scf(pba,phi)/(2.*C_scf(pba,phi));
+  //return - 3.0*rho_idm*dC_scf(pba,phi)/(2.*C_scf(pba,phi)); // ET: Purely conformal coupling
+  return - 3.0*rho_idm*(dC_scf(pba,phi)*a*a + dD_scf(pba,phi)*phi_prime*phi_prime - 
+          2.*D_scf(pba,phi)*(phi_prime*phi_prime*dC_scf(pba,phi)/C_scf(pba,phi) + 
+          a*a*dV_scf(pba,phi) + 3.*a*pvecback[pba->index_bg_H]*phi_prime))/(2.*a*a*C_scf(pba,phi) + 
+          2.*D_scf(pba,phi)*(a*a*3.0*rho_idm - phi_prime*phi_prime));
 
 }
 
@@ -3118,7 +3127,8 @@ double B_cff_scf(
                 double a,
                 double * pvecback) { //coefficient of delta Q used in the perturbation module
 
-  return - 3.0*rho_idm/(a*a*C_scf(pba,phi));
+  //return - 3.0*rho_idm/(a*a*C_scf(pba,phi)); // ET: Purely conformal coupling
+  return - 3.0*rho_idm/(a*a*C_scf(pba,phi) + D_scf(pba,phi)*(a*a*3.0*rho_idm - phi_prime*phi_prime));
 
 }
 
@@ -3130,7 +3140,11 @@ double B1_scf(
                 double a,
                 double * pvecback) { //B1 in delta Q used in the perturbation module
 
-  return (1./2.)*a*a*dC_scf(pba,phi);
+  //return (1./2.)*a*a*dC_scf(pba,phi); // ET: Purely conformal coupling
+  return (1./2.)*a*a*dC_scf(pba,phi) - 3.*a*pvecback[pba->index_bg_H]*D_scf(pba,phi)*phi_prime - 
+          a*a*D_scf(pba,phi)*(dV_scf(pba,phi) - Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)) - 
+          D_scf(pba,phi)*phi_prime*phi_prime*(dC_scf(pba,phi)/C_scf(pba,phi) - dD_scf(pba,phi)/(2.*D_scf(pba,phi)));
+
 
 }
 
@@ -3142,7 +3156,8 @@ double B2_scf(
                 double a,
                 double * pvecback) { //B2 in delta Q used in the perturbation module
 
-  return (1./2.)*a*a*ddC_scf(pba,phi) + Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)*a*a*dC_scf(pba,phi)/(3.0*rho_idm);
+  //return 0; // ET: Purely conformal coupling
+  return -(1./2.)*D_scf(pba,phi)*phi_prime;
 
 }
 
@@ -3154,7 +3169,10 @@ double B3_scf(
                 double a,
                 double * pvecback) { //B2 in delta Q used in the perturbation module
 
-  return (1./2.)*a*a*ddC_scf(pba,phi) + Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)*a*a*dC_scf(pba,phi)/(3.0*rho_idm);
+  //return 0; // ET: Purely conformal coupling
+  return -3.*a*pvecback[pba->index_bg_H]*D_scf(pba,phi) - 2.*D_scf(pba,phi)*phi_prime*(dC_scf(pba,phi)/C_scf(pba,phi) +
+         Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)/(3.0*rho_idm) - dD_scf(pba,phi)/(2.*D_scf(pba,phi)));
+
 
 }
 
@@ -3166,7 +3184,12 @@ double B4_scf(
                 double a,
                 double * pvecback) { //B2 in delta Q used in the perturbation module
 
-  return (1./2.)*a*a*ddC_scf(pba,phi) + Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)*a*a*dC_scf(pba,phi)/(3.0*rho_idm);
+  //return (1./2.)*a*a*ddC_scf(pba,phi) + Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)*a*a*dC_scf(pba,phi)/(3.0*rho_idm); // ET: Purely conformal coupling
+  return (1./2.)*a*a*ddC_scf(pba,phi) - a*a*D_scf(pba,phi)*ddV_scf(pba,phi) - a*a*dD_scf(pba,phi)*dV_scf(pba,phi) - 
+          3.*a*pvecback[pba->index_bg_H]*dD_scf(pba,phi)*phi_prime - D_scf(pba,phi)*phi_prime*phi_prime*(ddC_scf(pba,phi)/C_scf(pba,phi) - 
+          (dC_scf(pba,phi)*dC_scf(pba,phi))/(C_scf(pba,phi)*C_scf(pba,phi)) + (dC_scf(pba,phi)*dD_scf(pba,phi))/(C_scf(pba,phi)*D_scf(pba,phi)) -
+          ddD_scf(pba,phi)/(2.*D_scf(pba,phi))) + (Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)/(3.0*rho_idm))*(a*a*dC_scf(pba,phi) +
+          a*a*dD_scf(pba,phi)*3.0*rho_idm - dD_scf(pba,phi)*phi_prime*phi_prime);
 
 }
 
@@ -3178,6 +3201,9 @@ double B5_scf(
                 double a,
                 double * pvecback) { //B2 in delta Q used in the perturbation module
 
-  return (1./2.)*a*a*ddC_scf(pba,phi) + Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)*a*a*dC_scf(pba,phi)/(3.0*rho_idm);
+  //return 0; // ET: Purely conformal coupling
+  return 6.*a*pvecback[pba->index_bg_H]*D_scf(pba,phi)*phi_prime + 
+          2.*D_scf(pba,phi)*phi_prime*phi_prime*(Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)/(3.0*rho_idm) + 
+          dC_scf(pba,phi)/C_scf(pba,phi) - dD_scf(pba,phi)/(2.*D_scf(pba,phi)));
 
 }
