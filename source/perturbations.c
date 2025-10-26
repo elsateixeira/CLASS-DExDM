@@ -3356,6 +3356,16 @@ int perturbations_prepare_k_output(struct background * pba,
       /* Scalar field scf */
       class_store_columntitle(ppt->scalar_titles, "delta_scf", pba->has_scf);
       class_store_columntitle(ppt->scalar_titles, "theta_scf", pba->has_scf);
+      /* ET: Extra scf variables */
+      class_store_columntitle(ppt->scalar_titles, "delta_phi_scf", pba->has_scf);
+      class_store_columntitle(ppt->scalar_titles, "theta_phi_prime_scf", pba->has_scf);
+      class_store_columntitle(ppt->scalar_titles, "delta_rho_idm", (pba->has_scf) && (pba->has_idm));
+      class_store_columntitle(ppt->scalar_titles, "delta_p_idm", (pba->has_scf) && (pba->has_idm));
+      class_store_columntitle(ppt->scalar_titles, "delta_rho_scf", pba->has_scf);
+      class_store_columntitle(ppt->scalar_titles, "delta_p_scf", pba->has_scf);
+      class_store_columntitle(ppt->scalar_titles, "delta_Q_scf", (pba->has_scf) && (pba->has_idm));
+      class_store_columntitle(ppt->scalar_titles, "delta_mtot", pba->has_cdm);
+      class_store_columntitle(ppt->scalar_titles, "delta_mtot_prime", pba->has_cdm);
       /** Fluid */
       class_store_columntitle(ppt->scalar_titles, "delta_rho_fld", pba->has_fld);
       class_store_columntitle(ppt->scalar_titles, "rho_plus_p_theta_fld", pba->has_fld);
@@ -4019,6 +4029,8 @@ int perturbations_vector_init(
 
     /* metric perturbation eta of synchronous gauge */
     class_define_index(ppv->index_pt_eta,ppt->gauge == synchronous,index_pt,1);
+    /* ET: evolve metric perturbation h of synchronous gauge */
+    class_define_index(ppv->index_pt_h,ppt->gauge == synchronous,index_pt,1);
 
     /* metric perturbation phi of newtonian gauge (we could fix it
        using Einstein equations as a constraint equation for phi, but
@@ -5281,7 +5293,8 @@ int perturbations_initial_conditions(struct precision * ppr,
 
   double a,a_prime_over_a;
   double w_fld,dw_over_da_fld,integral_fld;
-  double delta_ur=0.,theta_ur=0.,shear_ur=0.,l3_ur=0.,eta=0.,delta_cdm=0.,alpha, alpha_prime;
+  /* ET: Add initial condition for integration of metric perturbation h */
+  double delta_ur=0.,theta_ur=0.,shear_ur=0.,l3_ur=0.,eta=0.,hini=0.,delta_cdm=0.,alpha, alpha_prime;
   double delta_dr=0;
   double q,epsilon,k2;
   int index_q,n_ncdm,idx;
@@ -5480,7 +5493,7 @@ int perturbations_initial_conditions(struct precision * ppr,
          *  and assume theta, delta_rho as for perfect fluid
          *  with \f$ c_s^2 = 1 \f$ and w = 1/3 (ASSUMES radiation TRACKING)
          */
-
+         /* ET: Since we have late time DE for the moment we just use zero initial conditions and the field will adjust: check */
         ppw->pv->y[ppw->pv->index_pt_phi_scf] = 0.;
         /*  a*a/k/k/ppw->pvecback[pba->index_bg_phi_prime_scf]*k*ktau_three/4.*1./(4.-6.*(1./3.)+3.*1.) * (ppw->pvecback[pba->index_bg_rho_scf] + ppw->pvecback[pba->index_bg_p_scf])* ppr->curvature_ini * s2_squared; */
 
@@ -5509,6 +5522,8 @@ int perturbations_initial_conditions(struct precision * ppr,
       //eta = ppr->curvature_ini * (1.-ktau_two/12./(15.+4.*fracnu)*(5.+4.*fracnu - (16.*fracnu*fracnu+280.*fracnu+325)/10./(2.*fracnu+15.)*tau*om)) /  s2_squared;
       //eta = ppr->curvature_ini * s2_squared * (1.-ktau_two/12./(15.+4.*fracnu)*(15.*s2_squared-10.+4.*s2_squared*fracnu - (16.*fracnu*fracnu+280.*fracnu+325)/10./(2.*fracnu+15.)*tau*om));
       eta = ppr->curvature_ini * (1.-ktau_two/12./(15.+4.*fracnu)*(5.+4.*s2_squared*fracnu - (16.*fracnu*fracnu+280.*fracnu+325)/10./(2.*fracnu+15.)*tau*om));
+      /* ET: Add initial condition for the evolution of the metric perturbation h. Check for other initial conditions */
+      hini = ktau_two/2. * (1.-om*tau/5.)* ppr->curvature_ini * s2_squared;
 
     }
 
@@ -5660,6 +5675,7 @@ int perturbations_initial_conditions(struct precision * ppr,
     if (ppt->gauge == synchronous) {
 
       ppw->pv->y[ppw->pv->index_pt_eta] = eta;
+      ppw->pv->y[ppw->pv->index_pt_h] = hini;
     }
 
 
@@ -5731,7 +5747,11 @@ int perturbations_initial_conditions(struct precision * ppr,
       }
 
       if (pba->has_idm == _TRUE_){
-        ppw->pv->y[ppw->pv->index_pt_delta_idm] -= 3.*a_prime_over_a*alpha;
+        if (pba->has_scf == _FALSE_)
+          ppw->pv->y[ppw->pv->index_pt_delta_idm] -= 3.*a_prime_over_a*alpha;
+        // ET: Added here extra term in coupling 
+        if (pba->has_scf == _TRUE_)
+          ppw->pv->y[ppw->pv->index_pt_delta_idm] -= (3.*a_prime_over_a*alpha + alpha*ppw->pvecback[pba->index_bg_phi_prime_scf]*ppw->pvecback[pba->index_bg_Q_scf]/(3.*ppw->pvecback[pba->index_bg_rho_idm]));
         ppw->pv->y[ppw->pv->index_pt_theta_idm] += k*k*alpha;
       }
 
