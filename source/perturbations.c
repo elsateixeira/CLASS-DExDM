@@ -5675,7 +5675,7 @@ int perturbations_initial_conditions(struct precision * ppr,
     if (ppt->gauge == synchronous) {
 
       ppw->pv->y[ppw->pv->index_pt_eta] = eta;
-      ppw->pv->y[ppw->pv->index_pt_h] = hini;
+      ppw->pv->y[ppw->pv->index_pt_h] = hini; /* ET: Include evolution equation for h as well */
     }
 
 
@@ -5774,12 +5774,21 @@ int perturbations_initial_conditions(struct precision * ppr,
         alpha_prime = 0.0;
         /* - 2. * a_prime_over_a * alpha + eta
            - 4.5 * (a2/k2) * ppw->rho_plus_p_shear; */
-
+        /* ET: Added case to include here extra terms in coupling */
         ppw->pv->y[ppw->pv->index_pt_phi_scf] += alpha*ppw->pvecback[pba->index_bg_phi_prime_scf];
-        ppw->pv->y[ppw->pv->index_pt_phi_prime_scf] +=
-          (-2.*a_prime_over_a*alpha*ppw->pvecback[pba->index_bg_phi_prime_scf]
-           -a*a* dV_scf(pba,ppw->pvecback[pba->index_bg_phi_scf])*alpha
-           +ppw->pvecback[pba->index_bg_phi_prime_scf]*alpha_prime);
+        if (pba->has_idm == _FALSE_) {
+          ppw->pv->y[ppw->pv->index_pt_phi_prime_scf] +=
+            (-2.*a_prime_over_a*alpha*ppw->pvecback[pba->index_bg_phi_prime_scf]
+            -a*a* dV_scf(pba,ppw->pvecback[pba->index_bg_phi_scf])*alpha
+            +ppw->pvecback[pba->index_bg_phi_prime_scf]*alpha_prime);
+        }
+        if (pba->has_idm == _TRUE_) {
+          ppw->pv->y[ppw->pv->index_pt_phi_prime_scf] +=
+            (-2.*a_prime_over_a*alpha*ppw->pvecback[pba->index_bg_phi_prime_scf]
+            -a*a*dV_scf(pba,ppw->pvecback[pba->index_bg_phi_scf])*alpha
+            +a*a*ppw->pvecback[pba->index_bg_Q_scf]*alpha
+            +ppw->pvecback[pba->index_bg_phi_prime_scf]*alpha_prime);
+        }
       }
 
       if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_) || (pba->has_dr == _TRUE_)  || (pba->has_idr == _TRUE_)) {
@@ -6701,7 +6710,14 @@ int perturbations_einstein(
 
     if (ppt->has_matter_source_in_current_gauge == _FALSE_) {
       if (ppt->has_source_delta_m == _TRUE_) {
-        ppw->delta_m += 3. *ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_H] * ppw->theta_m/k2;
+        if (ppt->has_source_delta_scf == _FALSE_) {
+          ppw->delta_m += 3. *ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_H] * ppw->theta_m/k2;
+        }
+        if (ppt->has_source_delta_scf == _TRUE_) {
+          ppw->delta_m += (3. *ppw->pvecback[pba->index_bg_a]*ppw->pvecback[pba->index_bg_H] 
+            + ppw->pvecback[pba->index_bg_Q_scf]*ppw->pvecback[pba->index_bg_phi_prime_scf]*ppw->pvecback[pba->index_bg_rho_idm]/(3.*ppw->pvecback[pba->index_bg_rho_idm] 
+            + 3.*ppw->pvecback[pba->index_bg_rho_b]) ) * ppw->theta_m/k2;
+        }
         // note: until 2.4.3 there was a typo, the factor was (-2 H'/H) instead
         // of (3 aH). There is the same typo in the CLASSgal paper
         // 1307.1459v1,v2,v3. It came from a confusion between (1+w_total)
@@ -6984,6 +7000,7 @@ int perturbations_total_stress_energy(
     }
 
     /* idm contribution */
+    /* ET: Nothing really changes here unless we want to introduce pressure contributions */
     if (pba->has_idm == _TRUE_) {
       ppw->delta_rho += ppw->pvecback[pba->index_bg_rho_idm]*y[ppw->pv->index_pt_delta_idm];
       ppw->rho_plus_p_theta += ppw->pvecback[pba->index_bg_rho_idm]*y[ppw->pv->index_pt_theta_idm];
@@ -7794,7 +7811,8 @@ int perturbations_sources(
 
       /* cdm is always on in synchronous gauge, see error message above that checks gauge and has_cdm */
       if (ppt->has_source_h == _TRUE_)
-        _set_source_(ppt->index_tp_h) = - 2 * y[ppw->pv->index_pt_delta_cdm];
+       // _set_source_(ppt->index_tp_h) = - 2 * y[ppw->pv->index_pt_delta_cdm];
+        _set_source_(ppt->index_tp_h) = y[ppw->pv->index_pt_h];  /* ET: Define evolution of h since in principle there are extra contributions */
 
       if (ppt->has_source_h_prime == _TRUE_)
         _set_source_(ppt->index_tp_h_prime) = pvecmetric[ppw->index_mt_h_prime];
@@ -8142,8 +8160,12 @@ int perturbations_print_variables(double tau,
   double delta_dr=0.,theta_dr=0.,shear_dr=0., f_dr=1.0;
   double delta_ur=0.,theta_ur=0.,shear_ur=0.,l4_ur=0.;
   double delta_idr=0., theta_idr=0., shear_idr=0.;
-  double delta_rho_scf=0., rho_plus_p_theta_scf=0.;
-  double delta_scf=0., theta_scf=0.;
+  /* ET: Added here extra scf variables for printing */
+  double delta_rho_scf=0., delta_p_scf=0., rho_plus_p_theta_scf=0.;
+  double delta_scf=0., theta_scf=0., delta_Q_scf=0., cs2_scf=0.;
+  double delta_phi_scf=0., delta_phi_prime_scf=0.;
+  double delta_mtot=0.;
+  double delta_mtot_prime=0.;
   /** - ncdm sector begins */
   int n_ncdm;
   double *delta_ncdm=NULL, *theta_ncdm=NULL, *shear_ncdm=NULL, *delta_p_over_delta_rho_ncdm=NULL;
@@ -8312,6 +8334,14 @@ int perturbations_print_variables(double tau,
 
     if (pba->has_cdm == _TRUE_) {
 
+      /* ET: Define total delta_m for growth rate computation - CHECK: Only works if rho_cdm not zero and rho_idm is zero?*/
+      delta_mtot += (delta_b*pvecback[pba->index_bg_rho_b])/(pvecback[pba->index_bg_rho_cdm]+pvecback[pba->index_bg_rho_b]);
+      delta_mtot_prime += (dy[ppw->pv->index_pt_delta_b]*pvecback[pba->index_bg_rho_b] 
+        + delta_b*(-3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_rho_b]))/(pvecback[pba->index_bg_rho_cdm] 
+        + pvecback[pba->index_bg_rho_b]) -  (y[ppw->pv->index_pt_delta_cdm]*pvecback[pba->index_bg_rho_cdm] 
+        + y[ppw->pv->index_pt_delta_b]*pvecback[pba->index_bg_rho_b])*(-3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_rho_b])/((pvecback[pba->index_bg_rho_cdm] 
+        + pvecback[pba->index_bg_rho_b])*(pvecback[pba->index_bg_rho_cdm] + pvecback[pba->index_bg_rho_b]));
+
       delta_cdm = y[ppw->pv->index_pt_delta_cdm];
       if (ppt->gauge == synchronous) {
         theta_cdm = 0.;
@@ -8319,11 +8349,50 @@ int perturbations_print_variables(double tau,
       else {
         theta_cdm = y[ppw->pv->index_pt_theta_cdm];
       }
+      /* ET: Added here cdm contribution to deltam_tot */
+      delta_mtot += (delta_cdm*pvecback[pba->index_bg_rho_cdm])/(pvecback[pba->index_bg_rho_cdm]+pvecback[pba->index_bg_rho_b]);
+      delta_mtot_prime += (dy[ppw->pv->index_pt_delta_cdm]*pvecback[pba->index_bg_rho_cdm] 
+        + delta_cdm*(-3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_rho_cdm]))/(pvecback[pba->index_bg_rho_cdm] 
+        + pvecback[pba->index_bg_rho_b]) -  (y[ppw->pv->index_pt_delta_cdm]*pvecback[pba->index_bg_rho_cdm] 
+        + y[ppw->pv->index_pt_delta_b]*pvecback[pba->index_bg_rho_b])*(-3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_rho_cdm])/((pvecback[pba->index_bg_rho_cdm] 
+        + pvecback[pba->index_bg_rho_b])*(pvecback[pba->index_bg_rho_cdm] + pvecback[pba->index_bg_rho_b]));
     }
 
+    // if (pba->has_idm == _TRUE_) {
+    //   delta_idm = y[ppw->pv->index_pt_delta_idm];
+    //   theta_idm = y[ppw->pv->index_pt_theta_idm];
+    // }
+
     if (pba->has_idm == _TRUE_) {
+      /* ET: Define total delta_m for growth rate computation - CHECK: Only works if rho_idm not zero and rho_cdm is zero?*/
+      delta_mtot += (delta_b*pvecback[pba->index_bg_rho_b])/(pvecback[pba->index_bg_rho_idm]+pvecback[pba->index_bg_rho_b]);
+      delta_mtot_prime += (dy[ppw->pv->index_pt_delta_b]*pvecback[pba->index_bg_rho_b] 
+        + delta_b*(-3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_rho_b]))/(pvecback[pba->index_bg_rho_idm] 
+        + pvecback[pba->index_bg_rho_b]) -  (y[ppw->pv->index_pt_delta_idm]*pvecback[pba->index_bg_rho_idm] 
+        + y[ppw->pv->index_pt_delta_b]*pvecback[pba->index_bg_rho_b])*(-3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_rho_b])/((pvecback[pba->index_bg_rho_idm] 
+        + pvecback[pba->index_bg_rho_b])*(pvecback[pba->index_bg_rho_idm] + pvecback[pba->index_bg_rho_b]));
       delta_idm = y[ppw->pv->index_pt_delta_idm];
       theta_idm = y[ppw->pv->index_pt_theta_idm];
+      /* ET: Added here coupling perturbation in each gauge*/
+      if (ppt->gauge == newtonian) {
+          delta_Q_scf = pvecback[pba->index_bg_B_cff_scf]*( pvecback[pba->index_bg_B1_scf]*y[ppw->pv->index_pt_delta_idm]
+                                                          - 6.*pvecback[pba->index_bg_B2_scf]*pvecmetric[ppw->index_mt_phi_prime]
+                                                          + pvecback[pba->index_bg_B5_scf]*pvecmetric[ppw->index_mt_psi]
+                                                          + pvecback[pba->index_bg_B3_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+                                                          + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[ppw->pv->index_pt_phi_scf] );
+      }
+      if (ppt->gauge == synchronous) {
+          delta_Q_scf = pvecback[pba->index_bg_B_cff_scf]*( pvecback[pba->index_bg_B1_scf]*y[ppw->pv->index_pt_delta_idm]
+                                                        + pvecback[pba->index_bg_B2_scf]*pvecmetric[ppw->index_mt_h_prime]
+                                                        + pvecback[pba->index_bg_B3_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+                                                        + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[ppw->pv->index_pt_phi_scf] );
+      }
+      /* ET: Added here idm contribution to deltam_tot */
+      delta_rho_idm = delta_idm*pvecback[pba->index_bg_rho_idm];
+      delta_mtot += (delta_idm*pvecback[pba->index_bg_rho_idm])/(pvecback[pba->index_bg_rho_idm]+pvecback[pba->index_bg_rho_b]);
+      delta_mtot_prime += (dy[ppw->pv->index_pt_delta_idm]*pvecback[pba->index_bg_rho_idm] + delta_idm*(-3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_rho_idm] -
+       ( pvecback[pba->index_bg_phi_prime_scf]*(1./3.)*pvecback[pba->index_bg_Q_scf])))/(pvecback[pba->index_bg_rho_idm] + pvecback[pba->index_bg_rho_b]) -  (y[ppw->pv->index_pt_delta_idm]*pvecback[pba->index_bg_rho_idm] + y[ppw->pv->index_pt_delta_b]*pvecback[pba->index_bg_rho_b])*(-3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*pvecback[pba->index_bg_rho_idm] -
+        ( pvecback[pba->index_bg_phi_prime_scf]*(1./3.)*pvecback[pba->index_bg_Q_scf]))/((pvecback[pba->index_bg_rho_idm] + pvecback[pba->index_bg_rho_b])*(pvecback[pba->index_bg_rho_idm] + pvecback[pba->index_bg_rho_b]));
     }
 
     /* gravitational potentials */
@@ -8418,16 +8487,33 @@ int perturbations_print_variables(double tau,
     }
 
     if (pba->has_scf == _TRUE_){
+      /* ET: Added here delta_p_scf delta_Q_scf for printing */
       if (ppt->gauge == synchronous){
         delta_rho_scf =  1./3.*
           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]);
+        delta_p_scf = 1./3.*
+      (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+      - ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]);
+        delta_Q_scf = pvecback[pba->index_bg_B_cff_scf]*( pvecback[pba->index_bg_B1_scf]*y[ppw->pv->index_pt_delta_cdm]
+                                                    + pvecback[pba->index_bg_B2_scf]*pvecmetric[ppw->index_mt_h_prime]
+                                                    + pvecback[pba->index_bg_B3_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+                                                    + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[ppw->pv->index_pt_phi_scf] );
       }
       else{
         delta_rho_scf =  1./3.*
           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
            - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*ppw->pvecmetric[ppw->index_mt_psi]);
+        delta_p_scf =  1./3.*
+         (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+          - ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
+          - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*psi);
+        delta_Q_scf = pvecback[pba->index_bg_B_cff_scf]*( pvecback[pba->index_bg_B1_scf]*y[ppw->pv->index_pt_delta_cdm]
+                                                              - 6.*pvecback[pba->index_bg_B2_scf]*pvecmetric[ppw->index_mt_phi_prime]
+                                                              + pvecback[pba->index_bg_B5_scf]*pvecmetric[ppw->index_mt_psi]
+                                                              + pvecback[pba->index_bg_B3_scf]*y[ppw->pv->index_pt_phi_prime_scf]
+                                                              + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[ppw->pv->index_pt_phi_scf] );
       }
 
       rho_plus_p_theta_scf =  1./3.*
@@ -8448,6 +8534,13 @@ int perturbations_print_variables(double tau,
 
       delta_b -= 3. * pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*alpha;
       theta_b += k*k*alpha;
+      /* ET: Define total delta_m for growth rate computation */
+      if (pba->has_cdm == _TRUE_) { 
+        delta_mtot += (delta_b*pvecback[pba->index_bg_rho_b])/(pvecback[pba->index_bg_rho_cdm]+pvecback[pba->index_bg_rho_b]);
+      }
+      if (pba->has_idm == _TRUE_) { 
+        delta_mtot += (delta_b*pvecback[pba->index_bg_rho_b])/(pvecback[pba->index_bg_rho_idm]+pvecback[pba->index_bg_rho_b]);
+      }
 
       if (pba->has_ur == _TRUE_) {
         delta_ur -= 4. * pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*alpha;
@@ -8468,11 +8561,16 @@ int perturbations_print_variables(double tau,
       if (pba->has_cdm == _TRUE_) {
         delta_cdm -= 3. * pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*alpha;
         theta_cdm += k*k*alpha;
+        /* ET: Add here cdm contribution to delta_m for growth rate computation */
+        delta_mtot += (delta_cdm*pvecback[pba->index_bg_rho_cdm])/(pvecback[pba->index_bg_rho_cdm]+pvecback[pba->index_bg_rho_b]);
       }
 
       if (pba->has_idm == _TRUE_) {
-        delta_idm -= 3. * pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*alpha;
+        //delta_idm -= 3. * pvecback[pba->index_bg_H]*pvecback[pba->index_bg_a]*alpha;
+        delta_cdm -= (3.*pvecback[pba->index_bg_a]*pvecback[pba->index_bg_H]*alpha + alpha*ppw->pvecback[pba->index_bg_phi_prime_scf]*ppw->pvecback[pba->index_bg_Q_scf]/(3.*ppw->pvecback[pba->index_bg_rho_idm]));
         theta_idm += k*k*alpha;
+        /* ET: Add here idm contribution to delta_m for growth rate computation */
+        delta_mtot += (delta_cdm*pvecback[pba->index_bg_rho_idm])/(pvecback[pba->index_bg_rho_idm]+pvecback[pba->index_bg_rho_b]);
       }
 
       if (pba->has_ncdm == _TRUE_) {
@@ -8502,9 +8600,16 @@ int perturbations_print_variables(double tau,
         delta_dcdm += alpha*(-a*pba->Gamma_dcdm-3.*a*H);
         theta_dcdm += k*k*alpha;
       }
-
-      if (pba->has_scf == _TRUE_) {
-        delta_scf += alpha*(-3.0*H*(1.0+pvecback[pba->index_bg_p_scf]/pvecback[pba->index_bg_rho_scf]));
+      
+      /* ET: Added a factor of a in the first term of delta_scf that was missing in original code */
+      if ((pba->has_scf == _TRUE_) && (pba->has_idm == _FALSE_)) {
+        delta_scf += alpha*(-3.0*H*a*(1.0+pvecback[pba->index_bg_p_scf]/pvecback[pba->index_bg_rho_scf]));
+        theta_scf += k*k*alpha;
+      }
+      /* ET: Added extra scf/coupling terms */
+      if ((pba->has_scf == _TRUE_) && (pba->has_idm == _TRUE_)) {
+        delta_scf += (alpha*(-3.0*H*a*(1.0+pvecback[pba->index_bg_p_scf]/pvecback[pba->index_bg_rho_scf]))
+          + alpha*ppw->pvecback[pba->index_bg_phi_prime_scf]*ppw->pvecback[pba->index_bg_Q_scf]/(3.*ppw->pvecback[pba->index_bg_rho_idm]));
         theta_scf += k*k*alpha;
       }
 
@@ -8577,6 +8682,16 @@ int perturbations_print_variables(double tau,
     /* Scalar field scf*/
     class_store_double(dataptr, delta_scf, pba->has_scf, storeidx);
     class_store_double(dataptr, theta_scf, pba->has_scf, storeidx);
+    /* ET: Added here extra scf/coupling functions for printing */
+    class_store_double(dataptr, delta_phi_scf, pba->has_scf, storeidx);
+    class_store_double(dataptr, delta_phi_prime_scf, pba->has_scf, storeidx);
+    class_store_double(dataptr, delta_rho_idm, ((pba->has_scf) && (pba->has_idm)), storeidx);
+    class_store_double(dataptr, delta_p_idm, ((pba->has_scf) && (pba->has_idm)), storeidx);
+    class_store_double(dataptr, delta_rho_scf, pba->has_scf, storeidx);
+    class_store_double(dataptr, delta_p_scf, pba->has_scf, storeidx);
+    class_store_double(dataptr, delta_Q_scf, ((pba->has_scf) && (pba->has_idm)), storeidx);
+    class_store_double(dataptr, delta_mtot, ((pba->has_cdm) || (pba->has_idm)), storeidx);
+    class_store_double(dataptr, delta_mtot_prime, ((pba->has_cdm) || (pba->has_idm)), storeidx);
     /** Fluid */
     class_store_double(dataptr, ppw->delta_rho_fld, pba->has_fld, storeidx);
     class_store_double(dataptr, ppw->rho_plus_p_theta_fld, pba->has_fld, storeidx);
@@ -8870,6 +8985,8 @@ int perturbations_derivs(double tau,
   a2 = a*a;
   a_prime_over_a = pvecback[pba->index_bg_H] * a;
   R = 4./3. * pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];
+  /* ET: Added here extra delta_Q_scf */
+  double delta_Q_scf = 0.;
 
   photon_scattering_rate = pvecthermo[pth->index_th_dkappa];
 
@@ -9255,6 +9372,72 @@ int perturbations_derivs(double tau,
       }
     }
 
+    /** - ---> ET: idm */
+
+    if (pba->has_idm == _TRUE_ && pba->has_scf == _FALSE_) {
+
+      /** - ----> newtonian gauge: idm density and velocity */
+
+      if (ppt->gauge == newtonian) {
+        dy[pv->index_pt_delta_idm] = -(y[pv->index_pt_theta_idm]+metric_continuity); /* idm density */
+
+        dy[pv->index_pt_theta_idm] = - a_prime_over_a*y[pv->index_pt_theta_idm] + metric_euler; /* idm velocity */
+      }
+
+      /** - ----> synchronous gauge: idm density only (velocity set to zero by definition of the gauge) */
+
+      if (ppt->gauge == synchronous) {
+        dy[pv->index_pt_delta_idm] = -metric_continuity; /* idm density */
+      }
+    }
+
+    if (pba->has_idm == _TRUE_ && pba->has_scf == _TRUE_) {
+
+      /** - ----> newtonian gauge: idm density and velocity */
+
+      delta_Q_scf = pvecback[pba->index_bg_B_cff_scf]*( pvecback[pba->index_bg_B1_scf]*y[pv->index_pt_delta_idm]
+                                                          + 2.*pvecback[pba->index_bg_B2_scf]*metric_continuity
+                                                          + pvecback[pba->index_bg_B5_scf]*(metric_euler/k2)
+                                                          + pvecback[pba->index_bg_B3_scf]*y[pv->index_pt_phi_prime_scf]
+                                                          + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[pv->index_pt_phi_scf] );
+
+      if (ppt->gauge == newtonian) {
+
+
+        dy[pv->index_pt_delta_idm] = - 3.*a_prime_over_a*cs2_scf*y[pv->index_pt_delta_idm]
+                                     -(y[pv->index_pt_theta_idm]+metric_continuity)
+                                     + pvecback[pba->index_bg_Q_scf]*pvecback[pba->index_bg_phi_prime_scf]*y[pv->index_pt_delta_idm]/(3.0*pvecback[pba->index_bg_rho_idm])
+                                     - pvecback[pba->index_bg_Q_scf]*y[pv->index_pt_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_idm])
+                                     - delta_Q_scf*pvecback[pba->index_bg_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_idm]);
+
+        //printf("newtonian delta_idm = %g\n",dy[pv->index_pt_delta_idm]);
+        dy[pv->index_pt_theta_idm] = cs2_scf*k2*y[pv->index_pt_delta_idm]
+                                     - a_prime_over_a*y[pv->index_pt_theta_idm] + metric_euler
+                                     - k2*pvecback[pba->index_bg_Q_scf]*y[pv->index_pt_phi_scf]/(3.0*pvecback[pba->index_bg_rho_idm])
+                                     + pvecback[pba->index_bg_Q_scf]*pvecback[pba->index_bg_phi_prime_scf]*y[pv->index_pt_theta_idm]/(3.0*pvecback[pba->index_bg_rho_idm]);
+        //printf("newtonian theta_idm = %g\n",dy[pv->index_pt_theta_idm]);
+      }
+
+      /** - ----> synchronous gauge: idm density only (velocity set to zero by definition of the gauge) */
+
+      if (ppt->gauge == synchronous) {
+
+        dy[pv->index_pt_delta_idm] = - 3.*a_prime_over_a*cs2_scf*y[pv->index_pt_delta_idm]
+                                     -(y[pv->index_pt_theta_cdm]+metric_continuity)
+                                     + pvecback[pba->index_bg_Q_scf]*pvecback[pba->index_bg_phi_prime_scf]*y[pv->index_pt_delta_idm]/(3.0*pvecback[pba->index_bg_rho_idm])
+                                     - pvecback[pba->index_bg_Q_scf]*y[pv->index_pt_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_idm])
+                                   - delta_Q_scf*pvecback[pba->index_bg_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_cim]);
+
+
+        //printf("synchronous delta_idm = %g\n",dy[pv->index_pt_delta_idm]);
+        dy[pv->index_pt_theta_idm] = cs2_scf*k2*y[pv->index_pt_delta_idm]
+                                     - a_prime_over_a*y[pv->index_pt_theta_idm]
+                                     - k2*pvecback[pba->index_bg_Q_scf]*y[pv->index_pt_phi_scf]/(3.0*pvecback[pba->index_bg_rho_idm])
+                                     + pvecback[pba->index_bg_Q_scf]*pvecback[pba->index_bg_phi_prime_scf]*y[pv->index_pt_theta_idm]/(3.0*pvecback[pba->index_bg_rho_idm]);
+        //printf("synchronous theta_idm = %g\n",dy[pv->index_pt_theta_idm]);
+      }
+    }
+
     /** - ---> interacting dark radiation */
     if (pba->has_idr == _TRUE_){
 
@@ -9410,9 +9593,33 @@ int perturbations_derivs(double tau,
 
     }
 
-    /** - ---> scalar field (scf) */
+    /* - ---> ET: uncoupled scalar field (scf) */
 
-    if (pba->has_scf == _TRUE_) {
+    if ((pba->has_scf == _TRUE_) && (pba->has_idm == _FALSE_)) {
+
+      /** - ----> field value */
+
+      dy[pv->index_pt_phi_scf] = y[pv->index_pt_phi_prime_scf];
+
+      /** - ----> Klein Gordon equation */
+        if (ppt->gauge == newtonian) {
+
+        /* ET: Added here terms in metric_euler (all) and in metric_continuity (4/3 instead of 1) that were missing in original code.  */
+       dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
+        //- metric_continuity*pvecback[pba->index_bg_phi_prime_scf] //  metric_continuity = h'/2
+        - 2*a2/k2*metric_euler*pvecback[pba->index_bg_dV_scf] // ET: this
+        - (4./3.)*metric_continuity*pvecback[pba->index_bg_phi_prime_scf] // ET: and this
+        - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]; //checked
+      }
+      if (ppt->gauge == synchronous) {
+        dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
+          - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]
+          - metric_continuity*pvecback[pba->index_bg_phi_prime_scf];
+        }
+    }
+
+    /* - ---> ET: coupled scalar field (scf) */
+    if ((pba->has_scf == _TRUE_) && (pba->has_idm == _TRUE_)) {
 
       /** - ----> field value */
 
@@ -9420,10 +9627,23 @@ int perturbations_derivs(double tau,
 
       /** - ----> Klein Gordon equation */
 
-      dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
-        - metric_continuity*pvecback[pba->index_bg_phi_prime_scf] //  metric_continuity = h'/2
-        - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]; //checked
+      if (ppt->gauge == newtonian) {
+        /* ET: Added here terms in metric_euler (all) and in metric_continuity (4/3 instead of 1) that were missing in original code.  */
+        /* ET: delta_Q_scf has been defined in has_idm loop  */
+       dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
+                  - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]
+                  - 2*a2/k2*metric_euler*pvecback[pba->index_bg_dV_scf]
+                  - (4./3.)*metric_continuity*pvecback[pba->index_bg_phi_prime_scf]
+                  + 2.*a2*pvecmetric[ppw->index_mt_psi]*pvecback[pba->index_bg_Q_scf]
+                  + a2*delta_Q_scf;
+      }
 
+      if (ppt->gauge == synchronous) {
+        dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
+          - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]
+          - metric_continuity*pvecback[pba->index_bg_phi_prime_scf]
+          + a2*delta_Q_scf;
+        }
     }
 
     /** - ---> ultra-relativistic neutrino/relics (ur) */
@@ -9651,6 +9871,7 @@ int perturbations_derivs(double tau,
     if (ppt->gauge == synchronous) {
 
       dy[pv->index_pt_eta] = pvecmetric[ppw->index_mt_eta_prime];
+      dy[pv->index_pt_h] = pvecmetric[ppw->index_mt_h_prime]; // ET: Define evolution of h since now there are extra contributions
 
     }
 
