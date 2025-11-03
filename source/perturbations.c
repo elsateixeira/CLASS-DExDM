@@ -8154,15 +8154,16 @@ int perturbations_print_variables(double tau,
 
   double delta_g,theta_g,shear_g,l4_g,pol0_g,pol1_g,pol2_g,pol4_g;
   double delta_b,theta_b;
-  double delta_cdm=0.,theta_cdm=0.;
-  double delta_idm=0., theta_idm=0.;
+  /* ET: Added delta_rho for cdm and idm */
+  double delta_rho_cdm=0., delta_cdm=0.,theta_cdm=0.;
+  double delta_rho_idm=0., delta_idm=0., theta_idm=0.;
   double delta_dcdm=0.,theta_dcdm=0.;
   double delta_dr=0.,theta_dr=0.,shear_dr=0., f_dr=1.0;
   double delta_ur=0.,theta_ur=0.,shear_ur=0.,l4_ur=0.;
   double delta_idr=0., theta_idr=0., shear_idr=0.;
   /* ET: Added here extra scf variables for printing */
   double delta_rho_scf=0., delta_p_scf=0., rho_plus_p_theta_scf=0.;
-  double delta_scf=0., theta_scf=0., delta_Q_scf=0., cs2_scf=0.;
+  double delta_scf=0., theta_scf=0., delta_Q_scf=0.;
   double delta_phi_scf=0., delta_phi_prime_scf=0.;
   double delta_mtot=0.;
   double delta_mtot_prime=0.;
@@ -8379,13 +8380,13 @@ int perturbations_print_variables(double tau,
                                                           - 6.*pvecback[pba->index_bg_B2_scf]*pvecmetric[ppw->index_mt_phi_prime]
                                                           + pvecback[pba->index_bg_B5_scf]*pvecmetric[ppw->index_mt_psi]
                                                           + pvecback[pba->index_bg_B3_scf]*y[ppw->pv->index_pt_phi_prime_scf]
-                                                          + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[ppw->pv->index_pt_phi_scf] );
+                                                          + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k*k)*y[ppw->pv->index_pt_phi_scf] );
       }
       if (ppt->gauge == synchronous) {
           delta_Q_scf = pvecback[pba->index_bg_B_cff_scf]*( pvecback[pba->index_bg_B1_scf]*y[ppw->pv->index_pt_delta_idm]
                                                         + pvecback[pba->index_bg_B2_scf]*pvecmetric[ppw->index_mt_h_prime]
                                                         + pvecback[pba->index_bg_B3_scf]*y[ppw->pv->index_pt_phi_prime_scf]
-                                                        + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[ppw->pv->index_pt_phi_scf] );
+                                                        + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k*k)*y[ppw->pv->index_pt_phi_scf] );
       }
       /* ET: Added here idm contribution to deltam_tot */
       delta_rho_idm = delta_idm*pvecback[pba->index_bg_rho_idm];
@@ -8498,7 +8499,7 @@ int perturbations_print_variables(double tau,
         delta_Q_scf = pvecback[pba->index_bg_B_cff_scf]*( pvecback[pba->index_bg_B1_scf]*y[ppw->pv->index_pt_delta_cdm]
                                                     + pvecback[pba->index_bg_B2_scf]*pvecmetric[ppw->index_mt_h_prime]
                                                     + pvecback[pba->index_bg_B3_scf]*y[ppw->pv->index_pt_phi_prime_scf]
-                                                    + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[ppw->pv->index_pt_phi_scf] );
+                                                    + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k*k)*y[ppw->pv->index_pt_phi_scf] );
       }
       else{
         delta_rho_scf =  1./3.*
@@ -8513,7 +8514,7 @@ int perturbations_print_variables(double tau,
                                                               - 6.*pvecback[pba->index_bg_B2_scf]*pvecmetric[ppw->index_mt_phi_prime]
                                                               + pvecback[pba->index_bg_B5_scf]*pvecmetric[ppw->index_mt_psi]
                                                               + pvecback[pba->index_bg_B3_scf]*y[ppw->pv->index_pt_phi_prime_scf]
-                                                              + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k2)*y[ppw->pv->index_pt_phi_scf] );
+                                                              + (pvecback[pba->index_bg_B4_scf]-pvecback[pba->index_bg_D_scf]*k*k)*y[ppw->pv->index_pt_phi_scf] );
       }
 
       rho_plus_p_theta_scf =  1./3.*
@@ -8686,7 +8687,6 @@ int perturbations_print_variables(double tau,
     class_store_double(dataptr, delta_phi_scf, pba->has_scf, storeidx);
     class_store_double(dataptr, delta_phi_prime_scf, pba->has_scf, storeidx);
     class_store_double(dataptr, delta_rho_idm, ((pba->has_scf) && (pba->has_idm)), storeidx);
-    class_store_double(dataptr, delta_p_idm, ((pba->has_scf) && (pba->has_idm)), storeidx);
     class_store_double(dataptr, delta_rho_scf, pba->has_scf, storeidx);
     class_store_double(dataptr, delta_p_scf, pba->has_scf, storeidx);
     class_store_double(dataptr, delta_Q_scf, ((pba->has_scf) && (pba->has_idm)), storeidx);
@@ -9404,15 +9404,13 @@ int perturbations_derivs(double tau,
       if (ppt->gauge == newtonian) {
 
 
-        dy[pv->index_pt_delta_idm] = - 3.*a_prime_over_a*cs2_scf*y[pv->index_pt_delta_idm]
-                                     -(y[pv->index_pt_theta_idm]+metric_continuity)
+        dy[pv->index_pt_delta_idm] = -(y[pv->index_pt_theta_idm]+metric_continuity)
                                      + pvecback[pba->index_bg_Q_scf]*pvecback[pba->index_bg_phi_prime_scf]*y[pv->index_pt_delta_idm]/(3.0*pvecback[pba->index_bg_rho_idm])
                                      - pvecback[pba->index_bg_Q_scf]*y[pv->index_pt_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_idm])
                                      - delta_Q_scf*pvecback[pba->index_bg_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_idm]);
 
         //printf("newtonian delta_idm = %g\n",dy[pv->index_pt_delta_idm]);
-        dy[pv->index_pt_theta_idm] = cs2_scf*k2*y[pv->index_pt_delta_idm]
-                                     - a_prime_over_a*y[pv->index_pt_theta_idm] + metric_euler
+        dy[pv->index_pt_theta_idm] = - a_prime_over_a*y[pv->index_pt_theta_idm] + metric_euler
                                      - k2*pvecback[pba->index_bg_Q_scf]*y[pv->index_pt_phi_scf]/(3.0*pvecback[pba->index_bg_rho_idm])
                                      + pvecback[pba->index_bg_Q_scf]*pvecback[pba->index_bg_phi_prime_scf]*y[pv->index_pt_theta_idm]/(3.0*pvecback[pba->index_bg_rho_idm]);
         //printf("newtonian theta_idm = %g\n",dy[pv->index_pt_theta_idm]);
@@ -9422,16 +9420,14 @@ int perturbations_derivs(double tau,
 
       if (ppt->gauge == synchronous) {
 
-        dy[pv->index_pt_delta_idm] = - 3.*a_prime_over_a*cs2_scf*y[pv->index_pt_delta_idm]
-                                     -(y[pv->index_pt_theta_cdm]+metric_continuity)
+        dy[pv->index_pt_delta_idm] = -(y[pv->index_pt_theta_cdm]+metric_continuity)
                                      + pvecback[pba->index_bg_Q_scf]*pvecback[pba->index_bg_phi_prime_scf]*y[pv->index_pt_delta_idm]/(3.0*pvecback[pba->index_bg_rho_idm])
                                      - pvecback[pba->index_bg_Q_scf]*y[pv->index_pt_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_idm])
-                                   - delta_Q_scf*pvecback[pba->index_bg_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_cim]);
+                                    - delta_Q_scf*pvecback[pba->index_bg_phi_prime_scf]/(3.0*pvecback[pba->index_bg_rho_idm]);
 
 
         //printf("synchronous delta_idm = %g\n",dy[pv->index_pt_delta_idm]);
-        dy[pv->index_pt_theta_idm] = cs2_scf*k2*y[pv->index_pt_delta_idm]
-                                     - a_prime_over_a*y[pv->index_pt_theta_idm]
+        dy[pv->index_pt_theta_idm] = - a_prime_over_a*y[pv->index_pt_theta_idm]
                                      - k2*pvecback[pba->index_bg_Q_scf]*y[pv->index_pt_phi_scf]/(3.0*pvecback[pba->index_bg_rho_idm])
                                      + pvecback[pba->index_bg_Q_scf]*pvecback[pba->index_bg_phi_prime_scf]*y[pv->index_pt_theta_idm]/(3.0*pvecback[pba->index_bg_rho_idm]);
         //printf("synchronous theta_idm = %g\n",dy[pv->index_pt_theta_idm]);
