@@ -482,6 +482,7 @@ struct perturbations_vector
   int index_pt_Gamma_fld;  /**< unique dark energy dynamical variable in PPF case */
   int index_pt_phi_scf;  /**< scalar field density */
   int index_pt_phi_prime_scf;  /**< scalar field velocity */
+  int index_pt_delta_Q_scf;  /**< ET: scalar field perturbed coupling */
   int index_pt_delta_ur; /**< density of ultra-relativistic neutrinos/relics */
   int index_pt_theta_ur; /**< velocity of ultra-relativistic neutrinos/relics */
   int index_pt_shear_ur; /**< shear of ultra-relativistic neutrinos/relics */
@@ -508,6 +509,7 @@ struct perturbations_vector
   int* q_size_ncdm;	/**< number of discrete momenta (for each ncdm species) */
 
   int index_pt_eta;       /**< synchronous gauge metric perturbation eta*/
+  int index_pt_h;         /**< ET: synchronous gauge metric perturbation h*/
   int index_pt_phi;	      /**< newtonian gauge metric perturbation phi */
   int index_pt_hv_prime;  /**< vector metric perturbation h_v' in synchronous gauge */
   int index_pt_V;         /**< vector metric perturbation V in Newtonian gauge */
