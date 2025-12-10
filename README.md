@@ -1,4 +1,4 @@
-![CLASS-DExDM logo](class-dexdm-logo.png)
+<img src="class-dexdm-logo.png" alt="CLASS-DExDM logo" width="250">
 
 CLASS: Cosmic Linear Anisotropy Solving System  {#mainpage}
 ==============================================
