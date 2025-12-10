@@ -1,3 +1,5 @@
+![CLASS-DExDM logo](class-dexdm-logo.png)
+
 CLASS: Cosmic Linear Anisotropy Solving System  {#mainpage}
 ==============================================
 
@@ -116,7 +118,5 @@ Support
 To get support, please open a new issue on the
 
 https://github.com/lesgourg/class_public
-
-![CLASS-DExDM logo](assets/logo.png)
 
 webpage!
