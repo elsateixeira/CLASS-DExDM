@@ -606,6 +606,7 @@ int perturbations_output_titles(
 
     class_store_columntitle(titles,"k (h/Mpc)",_TRUE_);
     class_store_columntitle(titles,"-T_cdm/k2",_TRUE_);
+    /* ET: should add here also idm? CHECK */
     class_store_columntitle(titles,"-T_b/k2",_TRUE_);
     class_store_columntitle(titles,"-T_g/k2",_TRUE_);
     class_store_columntitle(titles,"-T_ur/k2",_TRUE_);
@@ -722,8 +723,8 @@ int perturbations_init(
     if (ppt->perturbations_verbose > 0)
       printf("Computing sources\n");
   }
-
-  class_test((ppt->gauge == synchronous) && (pba->has_cdm == _FALSE_),
+  /* ET: Changed the test here to include idm as well */
+  class_test((ppt->gauge == synchronous) && ((pba->has_cdm == _FALSE_) && (pba->has_idm == _FALSE_)),
              ppt->error_message,
              "In the synchronous gauge, it is not self-consistent to assume no CDM: the later is used to define the initial timelike hypersurface. You can either add a negligible amount of CDM, or switch to newtonian gauge");
 
@@ -3364,8 +3365,8 @@ int perturbations_prepare_k_output(struct background * pba,
       class_store_columntitle(ppt->scalar_titles, "delta_rho_scf", pba->has_scf);
       class_store_columntitle(ppt->scalar_titles, "delta_p_scf", pba->has_scf);
       class_store_columntitle(ppt->scalar_titles, "delta_Q_scf", (pba->has_scf) && (pba->has_idm));
-      class_store_columntitle(ppt->scalar_titles, "delta_mtot", pba->has_cdm);
-      class_store_columntitle(ppt->scalar_titles, "delta_mtot_prime", pba->has_cdm);
+      class_store_columntitle(ppt->scalar_titles, "delta_mtot", ((pba->has_cdm) || (pba->has_idm)));
+      class_store_columntitle(ppt->scalar_titles, "delta_mtot_prime", ((pba->has_cdm) || (pba->has_idm)));
       /** Fluid */
       class_store_columntitle(ppt->scalar_titles, "delta_rho_fld", pba->has_fld);
       class_store_columntitle(ppt->scalar_titles, "rho_plus_p_theta_fld", pba->has_fld);
@@ -5559,6 +5560,9 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       ppw->pv->y[ppw->pv->index_pt_delta_cdm] = ppr->entropy_ini+3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g];
 
+      /* ET: Add idm ic - CHECK */
+      ppw->pv->y[ppw->pv->index_pt_delta_idm] = ppr->entropy_ini+3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g];
+
       if ((pba->has_ur == _TRUE_) || (pba->has_ncdm == _TRUE_)) {
 
         delta_ur = ppw->pv->y[ppw->pv->index_pt_delta_g];
@@ -5588,6 +5592,13 @@ int perturbations_initial_conditions(struct precision * ppr,
       if (pba->has_cdm == _TRUE_) {
 
         ppw->pv->y[ppw->pv->index_pt_delta_cdm] = 3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g];
+
+      }
+
+      /* ET: Add idm ic - CHECK */
+      if (pba->has_idm == _TRUE_) {
+
+        ppw->pv->y[ppw->pv->index_pt_delta_idm] = 3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g];
 
       }
 
@@ -5627,6 +5638,14 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       }
 
+      /* ET: Add idm ic - CHECK */
+
+      if (pba->has_idm == _TRUE_) {
+
+        ppw->pv->y[ppw->pv->index_pt_delta_idm] = -ppr->entropy_ini*fracnu*fracb/fracg/80.*ktau_two*om*tau;
+
+      }
+
       delta_ur = ppr->entropy_ini*(1.-ktau_two/6.);
       theta_ur = ppr->entropy_ini*k*k*tau/4.;
       shear_ur = ppr->entropy_ini*ktau_two/(4.*fracnu+15.)/2.;
@@ -5659,6 +5678,14 @@ int perturbations_initial_conditions(struct precision * ppr,
       if (pba->has_cdm == _TRUE_) {
 
         ppw->pv->y[ppw->pv->index_pt_delta_cdm] = -ppr->entropy_ini*9./64.*fracnu*fracb/fracg*k*tau*om*tau;
+
+      }
+
+      /* ET: Add idm ic - CHECK */
+
+      if (pba->has_idm == _TRUE_) {
+
+        ppw->pv->y[ppw->pv->index_pt_delta_idm] = -ppr->entropy_ini*9./64.*fracnu*fracb/fracg*k*tau*om*tau;
 
       }
 
@@ -5722,6 +5749,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       // note: if there are no neutrinos, fracnu, delta_ur and theta_ur below will consistently be zero.
 
+      // ET: Here for idm it should be fracidm*delta_cdm? CHECK
       delta_tot = (fracg*ppw->pv->y[ppw->pv->index_pt_delta_g]+fracnu*delta_ur+rho_m_over_rho_r*(fracb*ppw->pv->y[ppw->pv->index_pt_delta_b]+fraccdm*delta_cdm))/(1.+rho_m_over_rho_r);
 
       velocity_tot = ((4./3.)*(fracg*ppw->pv->y[ppw->pv->index_pt_theta_g]+fracnu*theta_ur) + rho_m_over_rho_r*fracb*ppw->pv->y[ppw->pv->index_pt_theta_b])/(1.+rho_m_over_rho_r);
@@ -9867,7 +9895,7 @@ int perturbations_derivs(double tau,
     if (ppt->gauge == synchronous) {
 
       dy[pv->index_pt_eta] = pvecmetric[ppw->index_mt_eta_prime];
-      dy[pv->index_pt_h] = pvecmetric[ppw->index_mt_h_prime]; // ET: Define evolution of h since now there are extra contributions
+      dy[pv->index_pt_h] = pvecmetric[ppw->index_mt_h_prime]; // ET: Define evolution of h since now there are extra contributions - check: I don't need to do this since now I can use the uncoupled DM, it will just make the code be slower
 
     }
 
@@ -10282,6 +10310,7 @@ int perturbations_tca_slip_and_shear(double * y,
      so no need to take into account corrections from perturbed
      recombination here */
 
+  // ET: Add idm_de here? check
   if ((pth->has_idm_b == _TRUE_) || (pth->has_idm_g == _TRUE_)) {
     theta_idm = y[pv->index_pt_theta_idm];
     theta_idm_prime = ppw->theta_idm_prime;
