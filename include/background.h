@@ -14,6 +14,12 @@
 
 enum equation_of_state {CLP,EDE};
 
+/** ET: scalar field potential types */
+enum scf_potential_type {scf_potential_exp, scf_potential_double_exp};
+
+/** ET: scalar field coupling types */
+enum scf_coupling_type {scf_coupling_none, scf_coupling_conformal, scf_coupling_disformal, scf_coupling_mixed};
+
 
 /** list of possible parametrizations of the varying fundamental constants */
 
@@ -116,12 +122,23 @@ struct background
                       not [delta p/delta rho] in the synchronous or newtonian gauge!) */
   double Omega_EDE;        /**< \f$ wa_{DE} \f$: Early Dark Energy density parameter */
   double * scf_parameters; /**< list of parameters describing the scalar field potential */
-  double V0_scf;        /**< \f$ ET: \V0_{scf} \f$: shooting parameter scalar field */
+  // ET: Added extra parameters for the scalar field coupling and potential functions. The exact meaning of these parameters depends on the specific model considered, and they are defined in background.c.
+  int scf_parameters_size; /**< size of scf_parameters */
+  short use_scf_parameters; /**< ET: whether to use scf_parameters rather than explicit scf_* inputs */
+  enum scf_potential_type scf_potential; /**< ET: scalar field potential type */
+  enum scf_coupling_type scf_coupling; /**< ET: scalar field coupling type */
+  short has_idm_de; /**< ET: coupling between IDM and scalar field */
+  double V0_scf;        /**< ET: scalar field potential amplitude */
+  double lambda_scf;    /**< ET: scalar field potential slope */
+  double V0_scf_2;      /**< ET: second exponential amplitude */
+  double lambda_scf_2;  /**< ET: second exponential slope */
+  double beta_scf;      /**< ET: conformal coupling strength */
+  double alpha_scf;     /**< ET: disformal coupling strength */
+  double D0_scf;        /**< ET: disformal coupling scale (in meV^-1) */
   short attractor_ic_scf;  /**< whether the scalar field has attractor initial conditions */
   int scf_tuning_index;    /**< index in scf_parameters used for tuning */
   double phi_ini_scf;      /**< \f$ \phi(t_0) \f$: scalar field initial value */
   double phi_prime_ini_scf;/**< \f$ d\phi(t_0)/d\tau \f$: scalar field initial derivative wrt conformal time */
-  int scf_parameters_size; /**< size of scf_parameters */
   double varconst_alpha; /**< finestructure constant for varying fundamental constants */
   double varconst_me; /**< electron mass for varying fundamental constants */
   enum varconst_dependence varconst_dep; /**< dependence of the varying fundamental constants as a function of time */

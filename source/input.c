@@ -1247,13 +1247,20 @@ int input_get_guess(double *xguess,
        * dxdy[index_guess] = -0.5081*pow(ba.Omega0_scf,-9./7.)`;
        * Version 3: use attractor solution
        * */
-      if (ba.scf_tuning_index == 0){
-        xguess[index_guess] = sqrt(3.0/ba.Omega0_scf);
-        dxdy[index_guess] = -0.5*sqrt(3.0)*pow(ba.Omega0_scf,-1.5);
+      if (ba.use_scf_parameters == _TRUE_) {
+        if (ba.scf_tuning_index == 0){
+          xguess[index_guess] = sqrt(3.0/ba.Omega0_scf);
+          dxdy[index_guess] = -0.5*sqrt(3.0)*pow(ba.Omega0_scf,-1.5);
+        }
+        else{
+          /* Default: take the passed value as xguess and set dxdy to 1. */
+          xguess[index_guess] = ba.scf_parameters[ba.scf_tuning_index];
+          dxdy[index_guess] = 1.;
+        }
       }
-      else{
-        /* Default: take the passed value as xguess and set dxdy to 1. */
-        xguess[index_guess] = ba.scf_parameters[ba.scf_tuning_index];
+      // ET: should add here also shooting for other variables
+      else {
+        xguess[index_guess] = ba.V0_scf;
         dxdy[index_guess] = 1.;
       }
       break;
@@ -3385,19 +3392,167 @@ int input_read_parameters_species(struct file_content * pfc,
 
   /** 8.b) If Omega scalar field (SCF) is different from 0 */
   if (pba->Omega0_scf != 0.){
+    // ET: added extra flags here
+    double param4 = 0., param5 = 0., param6 = 0., param7 = 0., param8 = 0., param9 = 0., param10 = 0.;
+    int flag_scf_params = _FALSE_;
+    int flag_scf_potential = _FALSE_;
+    int flag_scf_coupling = _FALSE_;
+    int flag_V0 = _FALSE_, flag_lambda = _FALSE_;
+    int flag_V0_2 = _FALSE_, flag_lambda_2 = _FALSE_;
+    int flag_beta = _FALSE_, flag_alpha = _FALSE_, flag_D0 = _FALSE_;
+    int flag_phi_ini = _FALSE_, flag_phi_prime_ini = _FALSE_;
+    int flag_explicit = _FALSE_;
+    int flag_explicit_potential = _FALSE_;
 
-    /** 8.b.1) Additional SCF parameters */
-    /* Read */
+    /** 8.b.1) SCF potential and coupling type */
+    class_call(parser_read_string(pfc,
+                                  "scf_potential",
+                                  &string1,
+                                  &flag_scf_potential,
+                                  errmsg),
+               errmsg,
+               errmsg);
+    if (flag_scf_potential == _TRUE_) {
+      if ((strstr(string1,"double_exp") != NULL) || (strstr(string1,"DOUBLE_EXP") != NULL) ||
+          (strstr(string1,"double_exponential") != NULL) || (strstr(string1,"DOUBLE_EXPONENTIAL") != NULL) ||
+          (strstr(string1,"double-exponential") != NULL) || (strstr(string1,"DOUBLE-EXPONENTIAL") != NULL)) {
+        pba->scf_potential = scf_potential_double_exp;
+      }
+      else if ((strstr(string1,"exp") != NULL) || (strstr(string1,"EXP") != NULL)
+               || (strstr(string1,"exponential") != NULL) || (strstr(string1,"EXPONENTIAL") != NULL)) {
+        pba->scf_potential = scf_potential_exp;
+      }
+      else {
+        class_stop(errmsg, "scf_potential has to be 'exp' or 'double_exp', but you entered %s.", string1);
+      }
+    }
+
+    class_call(parser_read_string(pfc,
+                                  "scf_coupling_type",
+                                  &string1,
+                                  &flag_scf_coupling,
+                                  errmsg),
+               errmsg,
+               errmsg);
+    if (flag_scf_coupling == _TRUE_) {
+      if ((strstr(string1,"none") != NULL) || (strstr(string1,"NONE") != NULL)) {
+        pba->scf_coupling = scf_coupling_none;
+      }
+      else if ((strstr(string1,"conformal") != NULL) || (strstr(string1,"CONFORMAL") != NULL)) {
+        pba->scf_coupling = scf_coupling_conformal;
+      }
+      else if ((strstr(string1,"disformal") != NULL) || (strstr(string1,"DISFORMAL") != NULL)) {
+        pba->scf_coupling = scf_coupling_disformal;
+      }
+      else if ((strstr(string1,"mixed") != NULL) || (strstr(string1,"MIXED") != NULL)) {
+        pba->scf_coupling = scf_coupling_mixed;
+      }
+      else {
+        class_stop(errmsg, "scf_coupling_type has to be none|conformal|disformal|mixed, but you entered %s.", string1);
+      }
+    }
+
+    /** 8.b.2) Explicit SCF parameters (AxiClass-style) */
+    class_call(parser_read_double(pfc,"scf_V0",&param1,&flag_V0,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_lambda",&param2,&flag_lambda,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_V0_2",&param4,&flag_V0_2,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_lambda_2",&param5,&flag_lambda_2,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_beta",&param6,&flag_beta,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_alpha",&param7,&flag_alpha,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_D0",&param8,&flag_D0,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_phi_ini",&param9,&flag_phi_ini,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_phi_prime_ini",&param10,&flag_phi_prime_ini,errmsg),
+               errmsg,
+               errmsg);
+    // ET: if any of the explicit parameters are set, we will ignore scf_parameters and use these instead
+    flag_explicit_potential = (flag_V0 || flag_lambda || flag_V0_2 || flag_lambda_2 || flag_beta || flag_alpha || flag_D0);
+    flag_explicit = (flag_explicit_potential || flag_phi_ini || flag_phi_prime_ini);
+
+    /** 8.b.3) Backward-compatible SCF parameter list */
     class_call(parser_read_list_of_doubles(pfc,
                                            "scf_parameters",
                                            &(pba->scf_parameters_size),
                                            &(pba->scf_parameters),
-                                           &flag1,
+                                           &flag_scf_params,
                                            errmsg),
                errmsg,errmsg);
+    // ET: if we have any explicit parameters, we will ignore the scf_parameters list, even if it is set. Check that needed parameters are set
+    class_test((flag_explicit_potential == _FALSE_) && (flag_scf_params == _FALSE_),
+               errmsg,
+               "You must specify either 'scf_parameters' or explicit scf_* parameters when Omega_scf != 0.");
 
-    /** 8.b.2) SCF initial conditions from attractor solution */
-    /* Read */
+    pba->use_scf_parameters = (flag_explicit_potential == _TRUE_) ? _FALSE_ : ((flag_scf_params == _TRUE_) ? _TRUE_ : _FALSE_);
+
+    if (flag_explicit_potential == _TRUE_) {
+      if (pba->scf_potential == scf_potential_exp) {
+        class_test((flag_V0 == _FALSE_) || (flag_lambda == _FALSE_),
+                   errmsg,
+                   "Explicit scf_* inputs require both scf_V0 and scf_lambda for scf_potential=exp.");
+        class_test((flag_V0_2 == _TRUE_) || (flag_lambda_2 == _TRUE_),
+                   errmsg,
+                   "scf_V0_2/scf_lambda_2 are only valid when scf_potential = double_exp.");
+      }
+      if (pba->scf_potential == scf_potential_double_exp) {
+        class_test((flag_V0 == _FALSE_) || (flag_lambda == _FALSE_) ||
+                   (flag_V0_2 == _FALSE_) || (flag_lambda_2 == _FALSE_),
+                   errmsg,
+                   "Explicit scf_* inputs require scf_V0, scf_lambda, scf_V0_2, scf_lambda_2 for scf_potential=double_exp.");
+      }
+    }
+
+    if (pba->use_scf_parameters == _TRUE_) {
+      if (pba->scf_potential == scf_potential_exp) {
+        class_test(pba->scf_parameters_size < 2,
+                   errmsg,
+                   "scf_parameters must contain at least [lambda, V0] for scf_potential=exp.");
+        pba->lambda_scf = pba->scf_parameters[0];
+        pba->V0_scf = pba->scf_parameters[1];
+        if (pba->scf_parameters_size > 2) pba->beta_scf = pba->scf_parameters[2];
+        if (pba->scf_parameters_size > 3) pba->alpha_scf = pba->scf_parameters[3];
+        if (pba->scf_parameters_size > 4) pba->D0_scf = pba->scf_parameters[4];
+      }
+      if (pba->scf_potential == scf_potential_double_exp) {
+        class_test(pba->scf_parameters_size < 4,
+                   errmsg,
+                   "scf_parameters must contain at least [lambda, V0, lambda_2, V0_2] for scf_potential=double_exp.");
+        pba->lambda_scf = pba->scf_parameters[0];
+        pba->V0_scf = pba->scf_parameters[1];
+        pba->lambda_scf_2 = pba->scf_parameters[2];
+        pba->V0_scf_2 = pba->scf_parameters[3];
+        if (pba->scf_parameters_size > 4) pba->beta_scf = pba->scf_parameters[4];
+        if (pba->scf_parameters_size > 5) pba->alpha_scf = pba->scf_parameters[5];
+        if (pba->scf_parameters_size > 6) pba->D0_scf = pba->scf_parameters[6];
+      }
+    }
+    else {
+      if (flag_lambda == _TRUE_) pba->lambda_scf = param2;
+      if (flag_V0 == _TRUE_) pba->V0_scf = param1;
+      if (flag_lambda_2 == _TRUE_) pba->lambda_scf_2 = param5;
+      if (flag_V0_2 == _TRUE_) pba->V0_scf_2 = param4;
+      if (flag_beta == _TRUE_) pba->beta_scf = param6;
+      if (flag_alpha == _TRUE_) pba->alpha_scf = param7;
+      if (flag_D0 == _TRUE_) pba->D0_scf = param8;
+      if (flag_phi_ini == _TRUE_) pba->phi_ini_scf = param9;
+      if (flag_phi_prime_ini == _TRUE_) pba->phi_prime_ini_scf = param10;
+    }
+
+    /** 8.b.4) SCF initial conditions from attractor solution */
     class_call(parser_read_string(pfc,
                                   "attractor_ic_scf",
                                   &string1,
@@ -3405,38 +3560,60 @@ int input_read_parameters_species(struct file_content * pfc,
                                   errmsg),
                errmsg,
                errmsg);
-    /* Complete set of parameters */
     if (flag1 == _TRUE_){
       if (string_begins_with(string1,'y') || string_begins_with(string1,'Y')){
         pba->attractor_ic_scf = _TRUE_;
       }
       else {
         pba->attractor_ic_scf = _FALSE_;
-        /* Test */
-        class_test(pba->scf_parameters_size<2,
-                   errmsg,
-                   "Since you are not using attractor initial conditions, you must specify phi and its derivative phi' as the last two entries in scf_parameters. See explanatory.ini for more details.");
-        pba->phi_ini_scf = pba->scf_parameters[pba->scf_parameters_size-2];
-        pba->phi_prime_ini_scf = pba->scf_parameters[pba->scf_parameters_size-1];
+        // ET: check that initial conditions are provided either via scf_parameters or via explicit inputs
+        if (flag_scf_params == _TRUE_) {
+          class_test(pba->scf_parameters_size<2,
+                     errmsg,
+                     "Since you are not using attractor initial conditions, you must specify phi and its derivative phi' as the last two entries in scf_parameters. See explanatory.ini for more details.");
+          pba->phi_ini_scf = pba->scf_parameters[pba->scf_parameters_size-2];
+          pba->phi_prime_ini_scf = pba->scf_parameters[pba->scf_parameters_size-1];
+        }
+        else {
+          class_test((flag_phi_ini == _FALSE_) || (flag_phi_prime_ini == _FALSE_),
+                     errmsg,
+                     "Since you are not using attractor initial conditions, you must specify scf_phi_ini and scf_phi_prime_ini or provide scf_parameters for ICs.");
+        }
       }
     }
 
-    /** 8.b.3) SCF tuning parameter */
-    /* Read */
-    class_read_int("scf_tuning_index",pba->scf_tuning_index);
-    /* Test */
-    class_test(pba->scf_tuning_index >= pba->scf_parameters_size,
-               errmsg,
-               "Tuning index 'scf_tuning_index' (%d) is larger than the number of entries (%d) in 'scf_parameters'.",
-               pba->scf_tuning_index,pba->scf_parameters_size);
+    /** 8.b.5) Coupling parameter checks */
+    if ((pba->scf_coupling == scf_coupling_conformal) || (pba->scf_coupling == scf_coupling_mixed)) {
+      class_test(pba->beta_scf == 0.,
+                 errmsg,
+                 "scf_coupling_type requires scf_beta (or scf_parameters[2]) to be nonzero.");
+    }
+    if ((pba->scf_coupling == scf_coupling_disformal) || (pba->scf_coupling == scf_coupling_mixed)) {
+      class_test((pba->alpha_scf == 0.) || (pba->D0_scf == 0.),
+                 errmsg,
+                 "scf_coupling_type requires scf_alpha and scf_D0 (or scf_parameters[3], scf_parameters[4]).");
+    }
 
-    /** 8.b.4) Shooting parameter */
-    /* Read */
-    class_read_double("scf_shooting_parameter",pba->scf_parameters[pba->scf_tuning_index]);
-    /* Complete set of parameters */
-    scf_lambda = pba->scf_parameters[0];
-    if ((fabs(scf_lambda) < 3.)&&(pba->background_verbose>1)){
-      printf("'scf_lambda' = %e < 3 won't be tracking (for exp quint) unless overwritten by tuning function.",scf_lambda);
+    /** 8.b.6) SCF tuning parameter (scf_parameters only) */
+    if (pba->use_scf_parameters == _TRUE_) {
+      class_read_int("scf_tuning_index",pba->scf_tuning_index);
+      class_test(pba->scf_tuning_index >= pba->scf_parameters_size,
+                 errmsg,
+                 "Tuning index 'scf_tuning_index' (%d) is larger than the number of entries (%d) in 'scf_parameters'.",
+                 pba->scf_tuning_index,pba->scf_parameters_size);
+      class_read_double("scf_shooting_parameter",pba->scf_parameters[pba->scf_tuning_index]);
+      scf_lambda = pba->scf_parameters[0];
+      if ((fabs(scf_lambda) < 3.)&&(pba->background_verbose>1)){
+        printf("'scf_lambda' = %e < 3 won't be tracking (for exp quint) unless overwritten by tuning function.",scf_lambda);
+      }
+    }
+    else {
+      class_call(parser_read_double(pfc,"scf_shooting_parameter",&param1,&flag1,errmsg),
+                 errmsg,
+                 errmsg);
+      class_test(flag1 == _TRUE_,
+                 errmsg,
+                 "scf_shooting_parameter is only supported when using scf_parameters.");
     }
   }
 
@@ -5990,6 +6167,17 @@ int input_default_params(struct background *pba,
   /** 9.b.1) Potential parameters and initial conditions */
   pba->scf_parameters = NULL;
   pba->scf_parameters_size = 0;
+  pba->use_scf_parameters = _TRUE_;
+  pba->scf_potential = scf_potential_exp;
+  pba->scf_coupling = scf_coupling_none;
+  pba->has_idm_de = _FALSE_;
+  pba->V0_scf = 0.;
+  pba->lambda_scf = 0.;
+  pba->V0_scf_2 = 0.;
+  pba->lambda_scf_2 = 0.;
+  pba->beta_scf = 0.;
+  pba->alpha_scf = 0.;
+  pba->D0_scf = 0.;
   /** 9.b.2) Initial conditions from attractor solution */
   pba->attractor_ic_scf = _TRUE_;
   pba->phi_ini_scf = 1;                // MZ: initial conditions are as multiplicative
