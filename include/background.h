@@ -20,6 +20,20 @@ enum scf_potential_type {scf_potential_exp, scf_potential_double_exp};
 /** ET: scalar field coupling types */
 enum scf_coupling_type {scf_coupling_none, scf_coupling_conformal, scf_coupling_disformal, scf_coupling_mixed};
 
+/** ET: scalar field shooting target (for explicit scf_* inputs) */
+enum scf_shooting_target_type {
+  scf_shoot_none,
+  scf_shoot_V0,
+  scf_shoot_lambda,
+  scf_shoot_V0_2,
+  scf_shoot_lambda_2,
+  scf_shoot_beta,
+  scf_shoot_alpha,
+  scf_shoot_D0,
+  scf_shoot_phi_ini,
+  scf_shoot_phi_prime_ini
+};
+
 
 /** list of possible parametrizations of the varying fundamental constants */
 
@@ -127,6 +141,7 @@ struct background
   short use_scf_parameters; /**< ET: whether to use scf_parameters rather than explicit scf_* inputs */
   enum scf_potential_type scf_potential; /**< ET: scalar field potential type */
   enum scf_coupling_type scf_coupling; /**< ET: scalar field coupling type */
+  enum scf_shooting_target_type scf_shooting_target; /**< ET: shooting target when using explicit scf_* inputs */
   short has_idm_de; /**< ET: coupling between IDM and scalar field */
   double V0_scf;        /**< ET: scalar field potential amplitude */
   double lambda_scf;    /**< ET: scalar field potential slope */

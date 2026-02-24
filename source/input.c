@@ -1241,7 +1241,7 @@ int input_get_guess(double *xguess,
       break;
     case Omega_scf:
       /* *
-       * ET: In this case keep the default shooting for V0 
+       * ET: In this case keep the default shooting for V0, could be updated with a switch for the other parameters
        * This guess is arbitrary, something nice using WKB should be implemented.
        * Version 2 uses a fit
        * xguess[index_guess] = 1.77835*pow(ba.Omega0_scf,-2./7.);
@@ -1259,9 +1259,22 @@ int input_get_guess(double *xguess,
           dxdy[index_guess] = 1.;
         }
       }
-      // ET: should add here also shooting for other variables
       else {
-        xguess[index_guess] = ba.V0_scf;
+        switch (ba.scf_shooting_target) {
+          case scf_shoot_V0: xguess[index_guess] = ba.V0_scf; break;
+          case scf_shoot_lambda: xguess[index_guess] = ba.lambda_scf; break;
+          case scf_shoot_V0_2: xguess[index_guess] = ba.V0_scf_2; break;
+          case scf_shoot_lambda_2: xguess[index_guess] = ba.lambda_scf_2; break;
+          case scf_shoot_beta: xguess[index_guess] = ba.beta_scf; break;
+          case scf_shoot_alpha: xguess[index_guess] = ba.alpha_scf; break;
+          case scf_shoot_D0: xguess[index_guess] = ba.D0_scf; break;
+          case scf_shoot_phi_ini: xguess[index_guess] = ba.phi_ini_scf; break;
+          case scf_shoot_phi_prime_ini: xguess[index_guess] = ba.phi_prime_ini_scf; break;
+          case scf_shoot_none:
+          default:
+            xguess[index_guess] = ba.V0_scf;
+            break;
+        }
         dxdy[index_guess] = 1.;
       }
       break;
@@ -3398,6 +3411,7 @@ int input_read_parameters_species(struct file_content * pfc,
     int flag_scf_params = _FALSE_;
     int flag_scf_potential = _FALSE_;
     int flag_scf_coupling = _FALSE_;
+    int flag_scf_shoot_target = _FALSE_;
     int flag_V0 = _FALSE_, flag_lambda = _FALSE_;
     int flag_V0_2 = _FALSE_, flag_lambda_2 = _FALSE_;
     int flag_beta = _FALSE_, flag_alpha = _FALSE_, flag_D0 = _FALSE_;
@@ -3405,7 +3419,7 @@ int input_read_parameters_species(struct file_content * pfc,
     int flag_explicit = _FALSE_;
     int flag_explicit_potential = _FALSE_;
 
-    /** 8.b.1) SCF potential and coupling type */
+    /** 8.b.1) ET: SCF potential and coupling type */
     class_call(parser_read_string(pfc,
                                   "scf_potential",
                                   &string1,
@@ -3453,7 +3467,61 @@ int input_read_parameters_species(struct file_content * pfc,
       }
     }
 
-    /** 8.b.2) Explicit SCF parameters (AxiClass-style) */
+    /** 8.b.2) ET: Shooting target (for explicit scf_* inputs) */
+    class_call(parser_read_string(pfc,
+                                  "scf_shooting_target",
+                                  &string1,
+                                  &flag_scf_shoot_target,
+                                  errmsg),
+               errmsg,
+               errmsg);
+    if (flag_scf_shoot_target == _TRUE_) {
+      if ((strstr(string1,"V0_2") != NULL) || (strstr(string1,"v0_2") != NULL) ||
+          (strstr(string1,"scf_V0_2") != NULL) || (strstr(string1,"SCF_V0_2") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_V0_2;
+      }
+      else if ((strstr(string1,"lambda_2") != NULL) || (strstr(string1,"LAMBDA_2") != NULL) ||
+               (strstr(string1,"scf_lambda_2") != NULL) || (strstr(string1,"SCF_LAMBDA_2") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_lambda_2;
+      }
+      else if ((strstr(string1,"V0") != NULL) || (strstr(string1,"v0") != NULL) ||
+               (strstr(string1,"scf_V0") != NULL) || (strstr(string1,"SCF_V0") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_V0;
+      }
+      else if ((strstr(string1,"lambda") != NULL) || (strstr(string1,"LAMBDA") != NULL) ||
+               (strstr(string1,"scf_lambda") != NULL) || (strstr(string1,"SCF_LAMBDA") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_lambda;
+      }
+      else if ((strstr(string1,"beta") != NULL) || (strstr(string1,"BETA") != NULL) ||
+               (strstr(string1,"scf_beta") != NULL) || (strstr(string1,"SCF_BETA") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_beta;
+      }
+      else if ((strstr(string1,"alpha") != NULL) || (strstr(string1,"ALPHA") != NULL) ||
+               (strstr(string1,"scf_alpha") != NULL) || (strstr(string1,"SCF_ALPHA") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_alpha;
+      }
+      else if ((strstr(string1,"D0") != NULL) || (strstr(string1,"d0") != NULL) ||
+               (strstr(string1,"scf_D0") != NULL) || (strstr(string1,"SCF_D0") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_D0;
+      }
+      else if ((strstr(string1,"phi_prime") != NULL) || (strstr(string1,"phi'_") != NULL) || (strstr(string1,"phi_prime_ini") != NULL) ||
+               (strstr(string1,"scf_phi_prime") != NULL) || (strstr(string1,"scf_phi_prime_ini") != NULL) ||
+               (strstr(string1,"SCF_PHI_PRIME") != NULL) || (strstr(string1,"SCF_PHI_PRIME_INI") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_phi_prime_ini;
+      }
+      else if ((strstr(string1,"phi") != NULL) || (strstr(string1,"PHI") != NULL) ||
+               (strstr(string1,"scf_phi") != NULL) || (strstr(string1,"SCF_PHI") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_phi_ini;
+      }
+      else if ((strstr(string1,"none") != NULL) || (strstr(string1,"NONE") != NULL)) {
+        pba->scf_shooting_target = scf_shoot_none;
+      }
+      else {
+        class_stop(errmsg, "scf_shooting_target must be one of V0/scf_V0, lambda/scf_lambda, V0_2/scf_V0_2, lambda_2/scf_lambda_2, beta/scf_beta, alpha/scf_alpha, D0/scf_D0, phi_ini/scf_phi_ini, phi_prime_ini/scf_phi_prime_ini.");
+      }
+    }
+
+    /** 8.b.3) ET: Explicit SCF parameters */
     class_call(parser_read_double(pfc,"scf_V0",&param1,&flag_V0,errmsg),
                errmsg,
                errmsg);
@@ -3485,7 +3553,7 @@ int input_read_parameters_species(struct file_content * pfc,
     flag_explicit_potential = (flag_V0 || flag_lambda || flag_V0_2 || flag_lambda_2 || flag_beta || flag_alpha || flag_D0);
     flag_explicit = (flag_explicit_potential || flag_phi_ini || flag_phi_prime_ini);
 
-    /** 8.b.3) Backward-compatible SCF parameter list */
+    /** 8.b.4) ET: Backward-compatible SCF parameter list */
     class_call(parser_read_list_of_doubles(pfc,
                                            "scf_parameters",
                                            &(pba->scf_parameters_size),
@@ -3553,7 +3621,7 @@ int input_read_parameters_species(struct file_content * pfc,
       if (flag_phi_prime_ini == _TRUE_) pba->phi_prime_ini_scf = param10;
     }
 
-    /** 8.b.4) SCF initial conditions from attractor solution */
+    /** 8.b.5) SCF initial conditions from attractor solution */
     class_call(parser_read_string(pfc,
                                   "attractor_ic_scf",
                                   &string1,
@@ -3583,7 +3651,7 @@ int input_read_parameters_species(struct file_content * pfc,
       }
     }
 
-    /** 8.b.5) Coupling parameter checks */
+    /** 8.b.6) ET: Coupling parameter checks */
     if ((pba->scf_coupling == scf_coupling_conformal) || (pba->scf_coupling == scf_coupling_mixed)) {
       class_test(pba->beta_scf == 0.,
                  errmsg,
@@ -3595,7 +3663,7 @@ int input_read_parameters_species(struct file_content * pfc,
                  "scf_coupling_type requires scf_alpha and scf_D0 (or scf_parameters[3], scf_parameters[4]).");
     }
 
-    /** 8.b.6) SCF tuning parameter (scf_parameters only) */
+    /** 8.b.7) ET: SCF tuning parameter (scf_parameters only) */
     if (pba->use_scf_parameters == _TRUE_) {
       class_read_int("scf_tuning_index",pba->scf_tuning_index);
       class_test(pba->scf_tuning_index >= pba->scf_parameters_size,
@@ -3609,12 +3677,31 @@ int input_read_parameters_species(struct file_content * pfc,
       }
     }
     else {
-      class_call(parser_read_double(pfc,"scf_shooting_parameter",&param1,&flag1,errmsg),
+      double scf_shoot_val = 0.0;
+      int flag_shoot_param = _FALSE_;
+      class_call(parser_read_double(pfc,"scf_shooting_parameter",&scf_shoot_val,&flag_shoot_param,errmsg),
                  errmsg,
                  errmsg);
-      class_test(flag1 == _TRUE_,
+      if (flag_shoot_param == _TRUE_) {
+        class_test(pba->scf_shooting_target == scf_shoot_none,
+                   errmsg,
+                   "When using explicit scf_* inputs, you must set scf_shooting_target if scf_shooting_parameter is used.");
+        switch (pba->scf_shooting_target) {
+          case scf_shoot_V0: pba->V0_scf = scf_shoot_val; break;
+          case scf_shoot_lambda: pba->lambda_scf = scf_shoot_val; break;
+          case scf_shoot_V0_2: pba->V0_scf_2 = scf_shoot_val; break;
+          case scf_shoot_lambda_2: pba->lambda_scf_2 = scf_shoot_val; break;
+          case scf_shoot_beta: pba->beta_scf = scf_shoot_val; break;
+          case scf_shoot_alpha: pba->alpha_scf = scf_shoot_val; break;
+          case scf_shoot_D0: pba->D0_scf = scf_shoot_val; break;
+          case scf_shoot_phi_ini: pba->phi_ini_scf = scf_shoot_val; break;
+          case scf_shoot_phi_prime_ini: pba->phi_prime_ini_scf = scf_shoot_val; break;
+          default: break;
+        }
+      }
+      class_test((pba->Omega0_scf < 0.) && (pba->scf_shooting_target == scf_shoot_none),
                  errmsg,
-                 "scf_shooting_parameter is only supported when using scf_parameters.");
+                 "Omega_scf < 0 requires scf_shooting_target when using explicit scf_* inputs.");
     }
   }
 
@@ -6172,6 +6259,7 @@ int input_default_params(struct background *pba,
   pba->scf_potential = scf_potential_exp;
   pba->scf_coupling = scf_coupling_none;
   pba->has_idm_de = _FALSE_;
+  pba->scf_shooting_target = scf_shoot_none;
   pba->V0_scf = 0.;
   pba->lambda_scf = 0.;
   pba->V0_scf_2 = 0.;
