@@ -3250,7 +3250,7 @@ int input_read_parameters_species(struct file_content * pfc,
     pba->Omega0_cdm = Omega_m_remaining;
   }
 
-  /* ET: Check how this is handled */
+  /* ET: Check how this is handled, interaction with multiple species? */
   /* When the CDM density is determined we can use the previously collected fractions to determine the corresponding densities. First, make sure everything is reasonable*/
   class_test((f_idm > 0.) && (pba->Omega0_cdm == 0.),
              errmsg,
@@ -3651,7 +3651,7 @@ int input_read_parameters_species(struct file_content * pfc,
       }
     }
 
-    /** 8.b.6) ET: Coupling parameter checks */
+    /** 8.b.6) ET: Coupling parameter checks: Add warning instead of error */
     if ((pba->scf_coupling == scf_coupling_conformal) || (pba->scf_coupling == scf_coupling_mixed)) {
       class_test(pba->beta_scf == 0.,
                  errmsg,
