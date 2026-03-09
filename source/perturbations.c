@@ -9213,7 +9213,8 @@ int perturbations_derivs(double tau,
 
     /* start with idm as it might be needed during (normal) tca  */
     // ET: check that this is only run for couplings with baryons/photons
-    if (pba->has_idm_g == _TRUE_ || pba->has_idm_b == _TRUE_ || pba->has_idm_dr == _TRUE_) {
+    // if (pba->has_idm_g == _TRUE_ || pba->has_idm_b == _TRUE_ || pba->has_idm_dr == _TRUE_) {
+    if (pba->has_idm == _TRUE_) {
       dy[pv->index_pt_delta_idm] = -(theta_idm+metric_continuity); /* idm density */
       dy[pv->index_pt_theta_idm] =
         -a_prime_over_a*theta_idm

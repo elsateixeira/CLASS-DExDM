@@ -107,6 +107,7 @@ setup.py
 ./python/setup.py
 ./python/test_class.py
 ./source/background.c
+./source/checks.txt
 ./source/distortions.c
 ./source/fourier.c
 ./source/harmonic.c
@@ -233,6 +234,7 @@ python/interface_generator.py
 python/setup.py
 python/test_class.py
 source/background.c
+source/checks.txt
 source/distortions.c
 source/fourier.c
 source/harmonic.c

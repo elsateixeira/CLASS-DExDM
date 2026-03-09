@@ -3,6 +3,7 @@ maybe remove 3369, 7844 in perturbations.c
 code set automatically small amount of dark matter (if omega_cdm =0 in coupling set to small value)
 remove delta_mtot and delta_mtot_prime
 check 9212
+check 9216
 check has_idm instances
 check I didn't miss anything
 add scf_C0 for comparison
