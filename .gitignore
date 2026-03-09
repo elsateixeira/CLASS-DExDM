@@ -13,4 +13,4 @@ RealSpaceInterface/cache/
 .DS_Store
 doc/manual/html
 doc/manual/latex
-checks.txt
+source/checks.txt
