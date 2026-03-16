@@ -27,6 +27,7 @@ enum scf_shooting_target_type {
   scf_shoot_lambda,
   scf_shoot_V0_2,
   scf_shoot_lambda_2,
+  scf_shoot_C0,
   scf_shoot_beta,
   scf_shoot_alpha,
   scf_shoot_D0,
@@ -148,6 +149,7 @@ struct background
   double V0_scf_2;      /**< ET: second exponential amplitude */
   double lambda_scf_2;  /**< ET: second exponential slope */
   double beta_scf;      /**< ET: conformal coupling strength */
+  double C0_scf;        /**< ET: conformal coupling amplitude */
   double alpha_scf;     /**< ET: disformal coupling strength */
   double D0_scf;        /**< ET: disformal coupling scale (in meV^-1) */
   short attractor_ic_scf;  /**< whether the scalar field has attractor initial conditions */

@@ -2147,6 +2147,7 @@ int background_solve(
         printf("     -> scf_lambda = %.6e\n",pba->lambda_scf);
         printf("     -> scf_V0 = %.6e\n",pba->V0_scf);
         if (pba->scf_coupling != scf_coupling_none) {
+          printf("     -> scf_C0 = %.6e\n",pba->C0_scf);
           printf("     -> scf_beta = %.6e\n",pba->beta_scf);
           printf("     -> scf_alpha = %.6e\n",pba->alpha_scf);
           printf("     -> scf_D0 = %.6e\n",pba->D0_scf);
@@ -3111,11 +3112,12 @@ double C_scf(
            ) {
 
   double scf_beta  = pba->beta_scf;
+  double scf_C0 = pba->C0_scf;
 
   if (pba->scf_coupling == scf_coupling_disformal) {
     return 1.0;
   }
-  return exp(2.*scf_beta*phi);
+  return scf_C0*exp(2.*scf_beta*phi);
 }
 
 double dC_scf(
@@ -3124,11 +3126,12 @@ double dC_scf(
            ) {
 
   double scf_beta  = pba->beta_scf;
+  double scf_C0 = pba->C0_scf;
 
   if (pba->scf_coupling == scf_coupling_disformal) {
     return 0.0;
   }
-  return 2.*scf_beta*exp(2.*scf_beta*phi);
+  return 2.*scf_beta*scf_C0*exp(2.*scf_beta*phi);
 }
 
 double ddC_scf(
@@ -3137,11 +3140,12 @@ double ddC_scf(
            ) {
 
   double scf_beta  = pba->beta_scf;
+  double scf_C0 = pba->C0_scf;
 
   if (pba->scf_coupling == scf_coupling_disformal) {
     return 0.0;
   }
-  return pow(2.*scf_beta,2.0)*exp(2.*scf_beta*phi);
+  return pow(2.*scf_beta,2.0)*scf_C0*exp(2.*scf_beta*phi);
 }
 
 /* ET: Added disformal function here. Can be easily modified along with its derivatives to include other couplings */

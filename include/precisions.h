@@ -74,7 +74,7 @@ class_precision_parameter(tol_tau_eq,double,1.e-6)
 /**
  * Minimum amount of cdm to allow calculations in synchronous gauge comoving with cdm.
  */
-class_precision_parameter(Omega0_cdm_min_synchronous,double,1.e-10)
+class_precision_parameter(Omega0_cdm_min_synchronous,double,1.e-12)
 
 /**
  * Absolute tolerance of root x during shooting (only 2D case)
