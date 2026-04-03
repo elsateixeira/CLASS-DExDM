@@ -11,3 +11,4 @@ add scf_C0 for comparison - done
 allow for multiple couplings - done
 
 check that terms in the KG equation add to zero - gradient for phi''
+Compare with William's code - he will upload the last version

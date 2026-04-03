@@ -4,6 +4,7 @@ likelihood:
   planck_2018_lowl.TT: {}
   planck_2018_lowl.EE: {}
   planck_2018_highl_plik.TTTEEE: {}
+  # Full CMB likelihoods including ACT and SPT
   # planck_2018_lensing.clik: {}  # optional
   bao.desi_dr2: {}               # DESI DR2 BAO (all tracers)
   sn.pantheonplus: {}            # Pantheon+ (no SH0ES)
@@ -19,6 +20,12 @@ theory:
       scf_coupling_type: conformal
       attractor_ic_scf: no
       scf_shooting_target: scf_V0 
+      scf_V0: 1.0
+      scf_C0: 1.0
+      scf_phi_ini: 1.0
+      scf_phi_prime_ini: -1e-8
+      Omega_scf: -1 
+      omega_cdm: 1e-10    
 
 params:
   # Base LCDM parameters (we can adjust priors if we want)
@@ -27,11 +34,11 @@ params:
     ref: {dist: norm, loc: 0.0224, scale: 0.0002}
     proposal: 0.0001
     latex: \Omega_b h^2
-  omega_cdm:
+  omega_idm:
     prior: {min: 0.001, max: 0.99}
     ref: {dist: norm, loc: 0.12, scale: 0.01}
     proposal: 0.005
-    latex: \Omega_c h^2
+    latex: \Omega_{\rm idm} h^2
   H0:
     prior: {min: 50, max: 90}
     ref: {dist: norm, loc: 67.5, scale: 1.0}
@@ -55,23 +62,21 @@ params:
   # Scalar-field parameters
   scf_lambda:
     prior: {min: 0., max: 2.0}
-    ref: {dist: norm, loc: 0.1, scale: 0.01}
-    proposal: 0.001
+    ref: {dist: norm, loc: 0.1, scale: 0.1}
+    proposal: 0.05
     latex: \lambda_{\rm scf}
   scf_beta:
     prior: {min: -5.0, max: 5.0}
-    ref: {dist: norm, loc: 0.0, scale: 0.01}
-    proposal: 0.001
+    ref: {dist: norm, loc: 0.0, scale: 0.1}
+    proposal: 0.05
     latex: \beta_{\rm scf}
-
-  scf_V0: {value: 1.0}
-  scf_C0: {value: 1.0}
-  scf_phi_ini: {value: 1.0}
-  scf_phi_prime_ini: {value: -1e-8}
-  Omega_scf: {value: -1} 
-  omega_idm: {value: 1.193524e-01}    
-  omega_cdm: {value: 1e-10}  
 
 sampler:
   mcmc:
-    max_samples: 200000
+    drag: true
+    oversample_power: 0.4
+    proposal_scale: 1.9
+    covmat: auto
+    Rminus1_stop: 0.01
+    Rminus1_cl_stop: 0.2
+    max_tries: 1000000
