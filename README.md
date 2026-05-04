@@ -1,6 +1,10 @@
 CLASS: Cosmic Linear Anisotropy Solving System  {#mainpage}
 ==============================================
 
+<p align="center">
+  <img src="darkin-class-logo.png" alt="CLASS-DExDM logo" width="320">
+</p>
+
 Authors: Julien Lesgourgues, Thomas Tram, Nils Schoeneberg
 
 with several major inputs from other people, especially Benjamin
