@@ -3569,6 +3569,7 @@ int input_read_parameters_species(struct file_content * pfc,
     class_call(parser_read_double(pfc,"scf_D0",&scf_D0_val,&flag_D0,errmsg),
                errmsg,
                errmsg);
+    /* ET: explicit entropy-coupling/source inputs */
     class_call(parser_read_double(pfc,"scf_f0",&scf_f0_val,&flag_f0,errmsg),
                errmsg,
                errmsg);
@@ -3659,6 +3660,7 @@ int input_read_parameters_species(struct file_content * pfc,
         if (pba->scf_parameters_size > 6) pba->alpha_scf = pba->scf_parameters[6];
         if (pba->scf_parameters_size > 7) pba->D0_scf = pba->scf_parameters[7];
       }
+      /* ET: backward-compatible entropy block appended to scf_parameters */
       if (flag_explicit_entropy == _FALSE_) {
         if (pba->scf_parameters_size > scf_entropy_base + 0) pba->f0_scf = pba->scf_parameters[scf_entropy_base + 0];
         if (pba->scf_parameters_size > scf_entropy_base + 1) pba->h0_scf = pba->scf_parameters[scf_entropy_base + 1];
@@ -3681,6 +3683,7 @@ int input_read_parameters_species(struct file_content * pfc,
       if (flag_phi_ini == _TRUE_) pba->phi_ini_scf = scf_phi_ini_val;
       if (flag_phi_prime_ini == _TRUE_) pba->phi_prime_ini_scf = scf_phi_prime_ini_val;
     }
+    /* ET: explicit entropy inputs override list/default values */
     if (flag_f0 == _TRUE_) pba->f0_scf = scf_f0_val;
     if (flag_h0 == _TRUE_) pba->h0_scf = scf_h0_val;
     if (flag_As == _TRUE_) pba->As_scf = scf_As_val;
@@ -6341,6 +6344,7 @@ int input_default_params(struct background *pba,
   pba->C0_scf = 0.;
   pba->alpha_scf = 0.;
   pba->D0_scf = 0.;
+  /* ET: entropy-coupling/source defaults */
   pba->f0_scf = 0.;
   pba->h0_scf = 0.;
   pba->As_scf = 0.;

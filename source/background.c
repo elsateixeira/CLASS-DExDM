@@ -479,6 +479,7 @@ int background_functions(
     pvecback[pba->index_bg_V_scf] = V_scf(pba,phi); //V_scf(pba,phi); //write here potential as function of phi
     pvecback[pba->index_bg_dV_scf] = dV_scf(pba,phi); // dV_scf(pba,phi); //potential' as function of phi
     pvecback[pba->index_bg_ddV_scf] = ddV_scf(pba,phi); // ddV_scf(pba,phi); //potential'' as function of phi
+    /* ET: entropy-coupling functions/source spectrum evaluated in background */
     pvecback[pba->index_bg_f_scf] = f_scf(pba,phi);
     pvecback[pba->index_bg_df_scf] = df_scf(pba,phi);
     pvecback[pba->index_bg_ddf_scf] = ddf_scf(pba,phi);
@@ -1112,6 +1113,7 @@ int background_indices(
   class_define_index(pba->index_bg_V_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_dV_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_ddV_scf,pba->has_scf,index_bg,1);
+  /* ET: entropy-coupling/source-function indices */
   class_define_index(pba->index_bg_f_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_df_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_ddf_scf,pba->has_scf,index_bg,1);
@@ -2567,6 +2569,7 @@ int background_output_titles(
   class_store_columntitle(titles,"V_scf",pba->has_scf);
   class_store_columntitle(titles,"V'_scf",pba->has_scf);
   class_store_columntitle(titles,"V''_scf",pba->has_scf);
+  /* ET: entropy-coupling/source columns */
   class_store_columntitle(titles,"f_scf",pba->has_scf);
   class_store_columntitle(titles,"df_scf",pba->has_scf);
   class_store_columntitle(titles,"ddf_scf",pba->has_scf);
@@ -2667,6 +2670,7 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_V_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_dV_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_ddV_scf],pba->has_scf,storeidx);
+    /* ET: entropy-coupling/source output values */
     class_store_double(dataptr,pvecback[pba->index_bg_f_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_df_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_ddf_scf],pba->has_scf,storeidx);
@@ -3140,6 +3144,7 @@ double ddV_scf(struct background *pba,
   }
 }
 
+/* ET: entropy-coupling/source model functions */
 double f_scf(struct background *pba,
              double phi
              ) {

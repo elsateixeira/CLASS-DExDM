@@ -224,6 +224,7 @@ struct background
   int index_bg_V_scf;         /**< scalar field potential V */
   int index_bg_dV_scf;        /**< scalar field potential derivative V' */
   int index_bg_ddV_scf;       /**< scalar field potential second derivative V'' */
+  /* ET: entropy-coupling/source-function background slots */
   int index_bg_f_scf;         /**< entropy function f_scf(phi) */
   int index_bg_df_scf;        /**< first derivative of f_scf(phi) */
   int index_bg_ddf_scf;       /**< second derivative of f_scf(phi) */
@@ -634,6 +635,7 @@ extern "C" {
                 );
 
   /* ET: entropy source functions and parameters */
+  /* ET: entropy coupling/source helper functions */
   double f_scf(
                struct background *pba,
                double phi

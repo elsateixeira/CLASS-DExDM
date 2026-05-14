@@ -5305,7 +5305,7 @@ int perturbations_initial_conditions(struct precision * ppr,
   double velocity_tot;
   double s2_squared;
   double h_corr_2,rho_fs; //For corrections to initial conditions to tensor modes
-  double delta_s_scf = 0.;
+  double delta_s_scf = 0.; /* ET: scalar entropy source mode */
 
 
   /** - (a) compute relevant background quantities: compute rho_r,
@@ -5459,6 +5459,7 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       /* interacting dark matter */
       if (pba->has_idm == _TRUE_) {
+        /* ET: entropy source amplitude in k-space */
         if ((pba->has_scf == _TRUE_) && (ppw->pvecback[pba->index_bg_rho_idm] > 0.)) {
           delta_s_scf =
             ppw->pvecback[pba->index_bg_As_scf]
@@ -5467,6 +5468,7 @@ int perturbations_initial_conditions(struct precision * ppr,
         }
         ppw->pv->y[ppw->pv->index_pt_delta_idm] = 3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g]; /* idm density */
         ppw->pv->y[ppw->pv->index_pt_theta_idm] = ppw->pv->y[ppw->pv->index_pt_theta_g];
+        /* ET: IDM initial velocity gets entropy-force contribution (EDM merged into IDM) */
         if ((pba->has_scf == _TRUE_) && (ppw->pvecback[pba->index_bg_rho_idm] > 0.)) {
           ppw->pv->y[ppw->pv->index_pt_theta_idm] =
             -(1./5.)*k2*tau
@@ -5504,6 +5506,7 @@ int perturbations_initial_conditions(struct precision * ppr,
          *  and assume theta, delta_rho as for perfect fluid
          *  with \f$ c_s^2 = 1 \f$ and w = 1/3 (ASSUMES radiation TRACKING)
          */
+        /* ET: entropy-sourced scalar ICs in the IDM+SCF case */
         if (pba->has_idm == _TRUE_) {
           ppw->pv->y[ppw->pv->index_pt_phi_scf] =
             -(ppw->pvecback[pba->index_bg_h_scf]*delta_s_scf)*ktau_two/6.0
@@ -7223,6 +7226,7 @@ int perturbations_total_stress_energy(
        species with non-zero shear.
     */
     if (pba->has_scf == _TRUE_) {
+      /* ET: entropy source term used in SCF stress-energy */
       delta_s_scf =
         ppw->pvecback[pba->index_bg_As_scf]
         *pow((k/ppw->pvecback[pba->index_bg_kp_scf]),ppw->pvecback[pba->index_bg_ns_scf])
@@ -7256,6 +7260,7 @@ int perturbations_total_stress_energy(
 
       ppw->delta_rho += delta_rho_scf;
 
+      /* ET: entropy mixing via h_scf enters momentum density */
       ppw->rho_plus_p_theta +=  1./3.*
         k*k/a2*ppw->pvecback[pba->index_bg_phi_prime_scf]
         *(ppw->pvecback[pba->index_bg_h_scf]*delta_s_scf + y[ppw->pv->index_pt_phi_scf]);
@@ -8951,7 +8956,7 @@ int perturbations_derivs(double tau,
 
   /* for use with dcdm and dr */
   double f_dr, fprime_dr;
-  double delta_s_scf = 0.;
+  double delta_s_scf = 0.; /* ET: scalar entropy source mode */
 
   /** - rename the fields of the input structure (just to avoid heavy notations) */
 
@@ -9014,6 +9019,7 @@ int perturbations_derivs(double tau,
   R = 4./3. * pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];
   /* ET: Added here extra delta_Q_scf */
   double delta_Q_scf = 0.;
+  /* ET: compute entropy source profile delta_s(k) */
   if (pba->has_scf == _TRUE_) {
     delta_s_scf =
       pvecback[pba->index_bg_As_scf]
@@ -9189,6 +9195,7 @@ int perturbations_derivs(double tau,
         -a_prime_over_a*theta_idm
         +metric_euler
         + k2*c2_idm*delta_idm; /* idm velocity */
+      /* ET: entropy force contribution in IDM Euler equation */
       if ((pba->has_scf == _TRUE_) && (pvecback[pba->index_bg_rho_idm] > 0.)) {
         dy[pv->index_pt_theta_idm] +=
           -k2*(pvecback[pba->index_bg_f_scf]-pvecback[pba->index_bg_h_scf]*pvecback[pba->index_bg_dV_scf])
@@ -9622,7 +9629,7 @@ int perturbations_derivs(double tau,
         - 2*a2/k2*metric_euler*pvecback[pba->index_bg_dV_scf] // ET: this
         - (4./3.)*metric_continuity*pvecback[pba->index_bg_phi_prime_scf] // ET: and this
         - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]
-        - (a2*pvecback[pba->index_bg_df_scf] + k2*pvecback[pba->index_bg_h_scf])*delta_s_scf; //checked
+        - (a2*pvecback[pba->index_bg_df_scf] + k2*pvecback[pba->index_bg_h_scf])*delta_s_scf; /* ET: entropy source in KG */
       }
       if (ppt->gauge == synchronous) {
         dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
@@ -9658,7 +9665,7 @@ int perturbations_derivs(double tau,
           - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]
           - metric_continuity*pvecback[pba->index_bg_phi_prime_scf]
           + a2*delta_Q_scf
-          - (a2*pvecback[pba->index_bg_df_scf] + k2*pvecback[pba->index_bg_h_scf])*delta_s_scf;
+          - (a2*pvecback[pba->index_bg_df_scf] + k2*pvecback[pba->index_bg_h_scf])*delta_s_scf; /* ET: entropy source in coupled KG */
         }
     }
 
