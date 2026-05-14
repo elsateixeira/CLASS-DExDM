@@ -18,7 +18,14 @@ enum equation_of_state {CLP,EDE};
 enum scf_potential_type {scf_potential_exp, scf_potential_double_exp};
 
 /** ET: scalar field coupling types */
-enum scf_coupling_type {scf_coupling_none, scf_coupling_conformal, scf_coupling_disformal, scf_coupling_mixed};
+enum scf_coupling_type {
+  scf_coupling_none,
+  scf_coupling_conformal,
+  scf_coupling_disformal,
+  scf_coupling_mixed,
+  scf_coupling_entropy,
+  scf_coupling_momentum
+};
 
 /** ET: scalar field shooting target (for explicit scf_* inputs) */
 enum scf_shooting_target_type {
@@ -152,7 +159,8 @@ struct background
   double C0_scf;        /**< ET: conformal coupling amplitude */
   double alpha_scf;     /**< ET: disformal coupling strength */
   double D0_scf;        /**< ET: disformal coupling scale (in meV^-1) */
-  /* ET: entropy-coupling/source parameters (ported from class_entropy, merged into IDM flow) */
+  double scf_veta;      /**< ET: momentum-coupling strength for Type-3 style coupling */
+  /* ET: entropy-coupling/source parameters (merged into IDM flow) */
   double f0_scf;        /**< entropy force coefficient entering f_scf(phi) */
   double h0_scf;        /**< entropy mixing coefficient entering h_scf(phi) */
   double As_scf;        /**< amplitude of entropy source mode delta_s */

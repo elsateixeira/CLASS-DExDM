@@ -398,6 +398,7 @@ int background_functions(
   double w_fld, dw_over_da, integral_fld;
   /* scalar field quantities */
   double phi, phi_prime, rho_idm, V0_scf; /* ET: Added extra variables here */
+  double Zbg, F, Fz, Fzz, kinetic_prefac;
   /* Since we only know a_prime_over_a after we have rho_tot,
      it is not possible to simply sum up p_tot_prime directly.
      Instead we sum up dp_dloga = p_prime/a_prime_over_a. The formula is
@@ -489,8 +490,20 @@ int background_functions(
     pvecback[pba->index_bg_kp_scf] = kp_scf(pba);
     pvecback[pba->index_bg_kc_scf] = kc_scf(pba);
     pvecback[pba->index_bg_pc_scf] = pc_scf(pba);
-    pvecback[pba->index_bg_rho_scf] = (phi_prime*phi_prime/(2*a*a) + V_scf(pba,phi))/3.; // energy of the scalar field. The field units are set automatically by setting the initial conditions
-    pvecback[pba->index_bg_p_scf] =(phi_prime*phi_prime/(2*a*a) - V_scf(pba,phi))/3.; // pressure of the scalar field
+    if (pba->scf_coupling == scf_coupling_momentum) {
+      /* ET: Type-3 momentum coupling modifies the effective kinetic prefactor (1-2*veta)/2 */
+      Zbg = -phi_prime/a;
+      F = pba->scf_veta*Zbg*Zbg;
+      Fz = 2.*pba->scf_veta*Zbg;
+      Fzz = 2.*pba->scf_veta;
+      (void)Fzz;
+      pvecback[pba->index_bg_rho_scf] = (((Zbg*Zbg)/2.) + F - Zbg*Fz + V_scf(pba,phi))/3.;
+      pvecback[pba->index_bg_p_scf] = (((Zbg*Zbg)/2.) - F - V_scf(pba,phi))/3.;
+    }
+    else {
+      pvecback[pba->index_bg_rho_scf] = (phi_prime*phi_prime/(2*a*a) + V_scf(pba,phi))/3.; // energy of the scalar field. The field units are set automatically by setting the initial conditions
+      pvecback[pba->index_bg_p_scf] =(phi_prime*phi_prime/(2*a*a) - V_scf(pba,phi))/3.; // pressure of the scalar field
+    }
     rho_tot += pvecback[pba->index_bg_rho_scf];
     p_tot += pvecback[pba->index_bg_p_scf];
     dp_dloga += 0.0; /** <-- This depends on a_prime_over_a, so we cannot add it now! */
@@ -603,7 +616,15 @@ int background_functions(
   pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_tot + p_tot) * a + pba->K/a;
 
   /* ET: Added extra vectors here that need previous definitions for coupled dark energy models */
-  if (pba->has_idm_de == _TRUE_) {
+  if ((pba->has_scf == _TRUE_) && (pba->scf_coupling == scf_coupling_momentum)) {
+    /* ET: p'_scf for momentum coupling */
+    kinetic_prefac = (1.-2.*pba->scf_veta);
+    pvecback[pba->index_bg_p_prime_scf] = pvecback[pba->index_bg_phi_prime_scf]*
+      (-kinetic_prefac*pvecback[pba->index_bg_phi_prime_scf]*pvecback[pba->index_bg_H]/a
+       -2./3.*pvecback[pba->index_bg_dV_scf]);
+    pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_scf];
+  }
+  else if (pba->has_idm_de == _TRUE_) {
     pvecback[pba->index_bg_Q_scf] = Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback); /** background coupling function Q */
     pvecback[pba->index_bg_B_cff_scf] = B_cff_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
     pvecback[pba->index_bg_B1_scf] = B1_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
@@ -2822,7 +2843,16 @@ int background_derivs(
   }
 
   // ET: coupled scf and idm evolution
-  if ((pba->has_scf == _TRUE_) && (pba->has_idm_de == _TRUE_)){
+  if ((pba->has_scf == _TRUE_) && (pba->has_idm_de == _TRUE_) && (pba->scf_coupling == scf_coupling_momentum)){
+    dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
+    dy[pba->index_bi_phi_prime_scf] = - 2*y[pba->index_bi_phi_prime_scf]
+      - a*dV_scf(pba,y[pba->index_bi_phi_scf])/(H*(1.-2.*pba->scf_veta));
+    /* ET: Type-3 momentum coupling has no background energy transfer */
+    dy[pba->index_bi_rho_idm] = -3.*y[pba->index_bi_rho_idm];
+  }
+
+  // ET: coupled scf and idm evolution (conformal/disformal)
+  if ((pba->has_scf == _TRUE_) && (pba->has_idm_de == _TRUE_) && (pba->scf_coupling != scf_coupling_momentum)){
     /** - Scalar field equation: \f$ \phi'' + 2 a H \phi' + a^2 dV = 0 \f$  (note H is wrt cosmic time) */
     dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
     /* ET: Modified KG equation including the coupling: check */
@@ -3210,7 +3240,10 @@ double C_scf(
   double scf_beta  = pba->beta_scf;
   double scf_C0 = pba->C0_scf;
 
-  if (pba->scf_coupling == scf_coupling_disformal) {
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_disformal) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
     return 1.0;
   }
   return scf_C0*exp(2.*scf_beta*phi);
@@ -3224,7 +3257,10 @@ double dC_scf(
   double scf_beta  = pba->beta_scf;
   double scf_C0 = pba->C0_scf;
 
-  if (pba->scf_coupling == scf_coupling_disformal) {
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_disformal) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
     return 0.0;
   }
   return 2.*scf_beta*scf_C0*exp(2.*scf_beta*phi);
@@ -3238,7 +3274,10 @@ double ddC_scf(
   double scf_beta  = pba->beta_scf;
   double scf_C0 = pba->C0_scf;
 
-  if (pba->scf_coupling == scf_coupling_disformal) {
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_disformal) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
     return 0.0;
   }
   return pow(2.*scf_beta,2.0)*scf_C0*exp(2.*scf_beta*phi);
@@ -3254,7 +3293,10 @@ double D_scf(
   double scf_alpha  = pba->alpha_scf;
   double scf_D0     = pow(pba->D0_scf, 4)*2.4248e+8;
 
-  if (pba->scf_coupling == scf_coupling_conformal) {
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_conformal) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
     return 0.0;
   }
   return  scf_D0*exp(2*scf_alpha*phi);
@@ -3267,7 +3309,10 @@ double dD_scf(
 
   double scf_alpha  = pba->alpha_scf;
 
-  if (pba->scf_coupling == scf_coupling_conformal) {
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_conformal) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
     return 0.0;
   }
   return  2*scf_alpha*D_scf(pba,phi);
@@ -3280,7 +3325,10 @@ double ddD_scf(
 
   double scf_alpha  = pba->alpha_scf;
 
-  if (pba->scf_coupling == scf_coupling_conformal) {
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_conformal) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
     return 0.0;
   }
   return pow(2*scf_alpha,2.)*D_scf(pba,phi);
@@ -3295,7 +3343,9 @@ double Q_scf(
              double a,
              double *pvecback) {
 
-  if (pba->scf_coupling == scf_coupling_none) {
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
     return 0.0;
   }
 
@@ -3315,6 +3365,11 @@ double B_cff_scf(
                 double a,
                 double * pvecback) { //coefficient of delta Q used in the perturbation module
   // ET: these ifs avoid dividing by zero in the conformal coupling case, but should be checked for consistency with the other couplings (will likely fail then)
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
+    return 1.0;
+  }
   if (pba->scf_coupling == scf_coupling_conformal) {
     return - 3.0*rho_idm/(a*a*C_scf(pba,phi));
   }
@@ -3330,6 +3385,11 @@ double B1_scf(
                 double a,
                 double * pvecback) { //B1 in delta Q used in the perturbation module
 
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
+    return 0.0;
+  }
   if (pba->scf_coupling == scf_coupling_conformal) {
     return (1./2.)*a*a*dC_scf(pba,phi);
   }
@@ -3348,6 +3408,11 @@ double B2_scf(
                 double a,
                 double * pvecback) { //B2 in delta Q used in the perturbation module
 
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
+    return 0.0;
+  }
   if (pba->scf_coupling == scf_coupling_conformal) {
     return 0.0;
   }
@@ -3363,6 +3428,11 @@ double B3_scf(
                 double a,
                 double * pvecback) { //B2 in delta Q used in the perturbation module
 
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
+    return 0.0;
+  }
   if (pba->scf_coupling == scf_coupling_conformal) {
     return 0.0;
   }
@@ -3380,6 +3450,11 @@ double B4_scf(
                 double a,
                 double * pvecback) { //B2 in delta Q used in the perturbation module
 
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
+    return 0.0;
+  }
   if (pba->scf_coupling == scf_coupling_conformal) {
     return (1./2.)*a*a*ddC_scf(pba,phi) + Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback)*a*a*dC_scf(pba,phi)/(3.0*rho_idm);
   }
@@ -3399,6 +3474,11 @@ double B5_scf(
                 double a,
                 double * pvecback) { //B2 in delta Q used in the perturbation module
 
+  if ((pba->scf_coupling == scf_coupling_none) ||
+      (pba->scf_coupling == scf_coupling_entropy) ||
+      (pba->scf_coupling == scf_coupling_momentum)) {
+    return 0.0;
+  }
   if (pba->scf_coupling == scf_coupling_conformal) {
     return 0.0;
   }
