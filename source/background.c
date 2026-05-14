@@ -479,6 +479,15 @@ int background_functions(
     pvecback[pba->index_bg_V_scf] = V_scf(pba,phi); //V_scf(pba,phi); //write here potential as function of phi
     pvecback[pba->index_bg_dV_scf] = dV_scf(pba,phi); // dV_scf(pba,phi); //potential' as function of phi
     pvecback[pba->index_bg_ddV_scf] = ddV_scf(pba,phi); // ddV_scf(pba,phi); //potential'' as function of phi
+    pvecback[pba->index_bg_f_scf] = f_scf(pba,phi);
+    pvecback[pba->index_bg_df_scf] = df_scf(pba,phi);
+    pvecback[pba->index_bg_ddf_scf] = ddf_scf(pba,phi);
+    pvecback[pba->index_bg_h_scf] = h_scf(pba,phi);
+    pvecback[pba->index_bg_As_scf] = As_scf(pba);
+    pvecback[pba->index_bg_ns_scf] = ns_scf(pba);
+    pvecback[pba->index_bg_kp_scf] = kp_scf(pba);
+    pvecback[pba->index_bg_kc_scf] = kc_scf(pba);
+    pvecback[pba->index_bg_pc_scf] = pc_scf(pba);
     pvecback[pba->index_bg_rho_scf] = (phi_prime*phi_prime/(2*a*a) + V_scf(pba,phi))/3.; // energy of the scalar field. The field units are set automatically by setting the initial conditions
     pvecback[pba->index_bg_p_scf] =(phi_prime*phi_prime/(2*a*a) - V_scf(pba,phi))/3.; // pressure of the scalar field
     rho_tot += pvecback[pba->index_bg_rho_scf];
@@ -1103,6 +1112,15 @@ int background_indices(
   class_define_index(pba->index_bg_V_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_dV_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_ddV_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_f_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_df_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_ddf_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_h_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_As_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_ns_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_kp_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_kc_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_pc_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_rho_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_p_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_p_prime_scf,pba->has_scf,index_bg,1);
@@ -2549,6 +2567,15 @@ int background_output_titles(
   class_store_columntitle(titles,"V_scf",pba->has_scf);
   class_store_columntitle(titles,"V'_scf",pba->has_scf);
   class_store_columntitle(titles,"V''_scf",pba->has_scf);
+  class_store_columntitle(titles,"f_scf",pba->has_scf);
+  class_store_columntitle(titles,"df_scf",pba->has_scf);
+  class_store_columntitle(titles,"ddf_scf",pba->has_scf);
+  class_store_columntitle(titles,"h_scf",pba->has_scf);
+  class_store_columntitle(titles,"As_scf",pba->has_scf);
+  class_store_columntitle(titles,"ns_scf",pba->has_scf);
+  class_store_columntitle(titles,"kp_scf",pba->has_scf);
+  class_store_columntitle(titles,"kc_scf",pba->has_scf);
+  class_store_columntitle(titles,"pc_scf",pba->has_scf);
 
   /* ET: Add new variables to print */
   class_store_columntitle(titles,"C_scf",pba->has_idm_de);
@@ -2640,6 +2667,15 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_V_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_dV_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_ddV_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_f_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_df_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_ddf_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_h_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_As_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_ns_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_kp_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_kc_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_pc_scf],pba->has_scf,storeidx);
 
     /* ET: Add new variables to print */
     class_store_double(dataptr,pvecback[pba->index_bg_C_scf],pba->has_idm_de,storeidx);
@@ -3102,6 +3138,61 @@ double ddV_scf(struct background *pba,
       class_stop(pba->error_message, "Unknown scf_potential %d", pba->scf_potential);
       return 0.0;
   }
+}
+
+double f_scf(struct background *pba,
+             double phi
+             ) {
+  double conv = (1.e-120)*(1.44983e113);
+  return pba->f0_scf*phi*conv;
+}
+
+double df_scf(struct background *pba,
+              double phi
+              ) {
+  double conv = (1.e-120)*(1.44983e113);
+  (void)phi;
+  return pba->f0_scf*conv;
+}
+
+double ddf_scf(struct background *pba,
+               double phi
+               ) {
+  (void)pba;
+  (void)phi;
+  return 0.0;
+}
+
+double h_scf(struct background *pba,
+             double phi
+             ) {
+  (void)phi;
+  return pba->h0_scf;
+}
+
+double As_scf(struct background *pba
+              ) {
+  return pba->As_scf;
+}
+
+double ns_scf(struct background *pba
+              ) {
+  return pba->ns_scf;
+}
+
+double kp_scf(struct background *pba
+              ) {
+  return pba->kp_scf;
+}
+
+double kc_scf(struct background *pba
+              ) {
+  return pba->kc_scf;
+}
+
+double pc_scf(struct background *pba
+              ) {
+  return pba->pc_scf;
 }
 
 

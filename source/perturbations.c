@@ -5305,6 +5305,7 @@ int perturbations_initial_conditions(struct precision * ppr,
   double velocity_tot;
   double s2_squared;
   double h_corr_2,rho_fs; //For corrections to initial conditions to tensor modes
+  double delta_s_scf = 0.;
 
 
   /** - (a) compute relevant background quantities: compute rho_r,
@@ -5458,8 +5459,20 @@ int perturbations_initial_conditions(struct precision * ppr,
 
       /* interacting dark matter */
       if (pba->has_idm == _TRUE_) {
+        if ((pba->has_scf == _TRUE_) && (ppw->pvecback[pba->index_bg_rho_idm] > 0.)) {
+          delta_s_scf =
+            ppw->pvecback[pba->index_bg_As_scf]
+            *pow((k/ppw->pvecback[pba->index_bg_kp_scf]),ppw->pvecback[pba->index_bg_ns_scf])
+            *exp(-pow(k/ppw->pvecback[pba->index_bg_kc_scf],ppw->pvecback[pba->index_bg_pc_scf]));
+        }
         ppw->pv->y[ppw->pv->index_pt_delta_idm] = 3./4.*ppw->pv->y[ppw->pv->index_pt_delta_g]; /* idm density */
         ppw->pv->y[ppw->pv->index_pt_theta_idm] = ppw->pv->y[ppw->pv->index_pt_theta_g];
+        if ((pba->has_scf == _TRUE_) && (ppw->pvecback[pba->index_bg_rho_idm] > 0.)) {
+          ppw->pv->y[ppw->pv->index_pt_theta_idm] =
+            -(1./5.)*k2*tau
+            *(ppw->pvecback[pba->index_bg_f_scf]-ppw->pvecback[pba->index_bg_h_scf]*ppw->pvecback[pba->index_bg_dV_scf])
+            *delta_s_scf*ppr->curvature_ini*s2_squared/ppw->pvecback[pba->index_bg_rho_idm];
+        }
       }
 
       if (pba->has_dcdm == _TRUE_) {
@@ -5491,11 +5504,20 @@ int perturbations_initial_conditions(struct precision * ppr,
          *  and assume theta, delta_rho as for perfect fluid
          *  with \f$ c_s^2 = 1 \f$ and w = 1/3 (ASSUMES radiation TRACKING)
          */
-         /* ET: Since we have late time DE for the moment we just use zero initial conditions and the field will adjust: check */
-        ppw->pv->y[ppw->pv->index_pt_phi_scf] = 0.;
+        if (pba->has_idm == _TRUE_) {
+          ppw->pv->y[ppw->pv->index_pt_phi_scf] =
+            -(ppw->pvecback[pba->index_bg_h_scf]*delta_s_scf)*ktau_two/6.0
+            -((a/tau)*(a/tau)*ppw->pvecback[pba->index_bg_df_scf]*delta_s_scf)*pow(tau,4)/20.0;
+          ppw->pv->y[ppw->pv->index_pt_phi_prime_scf] =
+            -(ppw->pvecback[pba->index_bg_h_scf]*delta_s_scf)*(k*k*tau)/3.0
+            -((a/tau)*(a/tau)*ppw->pvecback[pba->index_bg_df_scf]*delta_s_scf)*pow(tau,3)/5.0;
+        }
+        else {
+          /* ET: Since we have late time DE for the moment we just use zero initial conditions and the field will adjust: check */
+          ppw->pv->y[ppw->pv->index_pt_phi_scf] = 0.;
+          ppw->pv->y[ppw->pv->index_pt_phi_prime_scf] = 0.;
+        }
         /*  a*a/k/k/ppw->pvecback[pba->index_bg_phi_prime_scf]*k*ktau_three/4.*1./(4.-6.*(1./3.)+3.*1.) * (ppw->pvecback[pba->index_bg_rho_scf] + ppw->pvecback[pba->index_bg_p_scf])* ppr->curvature_ini * s2_squared; */
-
-        ppw->pv->y[ppw->pv->index_pt_phi_prime_scf] = 0.;
         /* delta_fld expression * rho_scf with the w = 1/3, c_s = 1
            a*a/ppw->pvecback[pba->index_bg_phi_prime_scf]*( - ktau_two/4.*(1.+1./3.)*(4.-3.*1.)/(4.-6.*(1/3.)+3.*1.)*ppw->pvecback[pba->index_bg_rho_scf] - ppw->pvecback[pba->index_bg_dV_scf]*ppw->pv->y[ppw->pv->index_pt_phi_scf])* ppr->curvature_ini * s2_squared; */
       }
@@ -6851,7 +6873,7 @@ int perturbations_total_stress_energy(
   double gwncdm;
   double rho_relativistic;
   double rho_dr_over_f;
-  double delta_rho_scf, delta_p_scf, psi;
+  double delta_rho_scf, delta_p_scf, psi, delta_s_scf=0.;
   /** Variables used for FLD and PPF */
   double c_gamma_k_H_square;
   double Gamma_prime_plus_a_prime_over_a_Gamma, s2sq=1.;
@@ -7201,14 +7223,20 @@ int perturbations_total_stress_energy(
        species with non-zero shear.
     */
     if (pba->has_scf == _TRUE_) {
+      delta_s_scf =
+        ppw->pvecback[pba->index_bg_As_scf]
+        *pow((k/ppw->pvecback[pba->index_bg_kp_scf]),ppw->pvecback[pba->index_bg_ns_scf])
+        *exp(-pow(k/ppw->pvecback[pba->index_bg_kc_scf],ppw->pvecback[pba->index_bg_pc_scf]));
 
       if (ppt->gauge == synchronous){
         delta_rho_scf =  1./3.*
           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
-           + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]);
+           + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
+           + ppw->pvecback[pba->index_bg_f_scf]*delta_s_scf);
         delta_p_scf = 1./3.*
           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
-           - ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]);
+           - ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
+           - ppw->pvecback[pba->index_bg_f_scf]*delta_s_scf);
       }
       else{
         /* equation for psi */
@@ -7217,17 +7245,20 @@ int perturbations_total_stress_energy(
         delta_rho_scf =  1./3.*
           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
            + ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
-           - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*psi);
+           - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*psi
+           + ppw->pvecback[pba->index_bg_f_scf]*delta_s_scf);
         delta_p_scf =  1./3.*
           (1./a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_prime_scf]
            - ppw->pvecback[pba->index_bg_dV_scf]*y[ppw->pv->index_pt_phi_scf]
-           - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*psi);
+           - 1./a2*pow(ppw->pvecback[pba->index_bg_phi_prime_scf],2)*psi
+           - ppw->pvecback[pba->index_bg_f_scf]*delta_s_scf);
       }
 
       ppw->delta_rho += delta_rho_scf;
 
       ppw->rho_plus_p_theta +=  1./3.*
-        k*k/a2*ppw->pvecback[pba->index_bg_phi_prime_scf]*y[ppw->pv->index_pt_phi_scf];
+        k*k/a2*ppw->pvecback[pba->index_bg_phi_prime_scf]
+        *(ppw->pvecback[pba->index_bg_h_scf]*delta_s_scf + y[ppw->pv->index_pt_phi_scf]);
 
       ppw->delta_p += delta_p_scf;
 
@@ -8920,6 +8951,7 @@ int perturbations_derivs(double tau,
 
   /* for use with dcdm and dr */
   double f_dr, fprime_dr;
+  double delta_s_scf = 0.;
 
   /** - rename the fields of the input structure (just to avoid heavy notations) */
 
@@ -8982,6 +9014,12 @@ int perturbations_derivs(double tau,
   R = 4./3. * pvecback[pba->index_bg_rho_g]/pvecback[pba->index_bg_rho_b];
   /* ET: Added here extra delta_Q_scf */
   double delta_Q_scf = 0.;
+  if (pba->has_scf == _TRUE_) {
+    delta_s_scf =
+      pvecback[pba->index_bg_As_scf]
+      *pow((k/pvecback[pba->index_bg_kp_scf]),pvecback[pba->index_bg_ns_scf])
+      *exp(-pow(k/pvecback[pba->index_bg_kc_scf],pvecback[pba->index_bg_pc_scf]));
+  }
 
   photon_scattering_rate = pvecthermo[pth->index_th_dkappa];
 
@@ -9151,6 +9189,11 @@ int perturbations_derivs(double tau,
         -a_prime_over_a*theta_idm
         +metric_euler
         + k2*c2_idm*delta_idm; /* idm velocity */
+      if ((pba->has_scf == _TRUE_) && (pvecback[pba->index_bg_rho_idm] > 0.)) {
+        dy[pv->index_pt_theta_idm] +=
+          -k2*(pvecback[pba->index_bg_f_scf]-pvecback[pba->index_bg_h_scf]*pvecback[pba->index_bg_dV_scf])
+          *delta_s_scf/pvecback[pba->index_bg_rho_idm];
+      }
 
       /* ET: add SCF coupling contributions (can now be combined with other idm couplings) */
       if (pba->has_idm_de == _TRUE_) {
@@ -9578,12 +9621,14 @@ int perturbations_derivs(double tau,
         //- metric_continuity*pvecback[pba->index_bg_phi_prime_scf] //  metric_continuity = h'/2
         - 2*a2/k2*metric_euler*pvecback[pba->index_bg_dV_scf] // ET: this
         - (4./3.)*metric_continuity*pvecback[pba->index_bg_phi_prime_scf] // ET: and this
-        - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]; //checked
+        - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]
+        - (a2*pvecback[pba->index_bg_df_scf] + k2*pvecback[pba->index_bg_h_scf])*delta_s_scf; //checked
       }
       if (ppt->gauge == synchronous) {
         dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
           - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]
-          - metric_continuity*pvecback[pba->index_bg_phi_prime_scf];
+          - metric_continuity*pvecback[pba->index_bg_phi_prime_scf]
+          - (a2*pvecback[pba->index_bg_df_scf] + k2*pvecback[pba->index_bg_h_scf])*delta_s_scf;
         }
     }
 
@@ -9604,14 +9649,16 @@ int perturbations_derivs(double tau,
                   - 2*a2/k2*metric_euler*pvecback[pba->index_bg_dV_scf]
                   - (4./3.)*metric_continuity*pvecback[pba->index_bg_phi_prime_scf]
                   + 2.*a2*pvecmetric[ppw->index_mt_psi]*pvecback[pba->index_bg_Q_scf]
-                  + a2*delta_Q_scf;
+                  + a2*delta_Q_scf
+                  - (a2*pvecback[pba->index_bg_df_scf] + k2*pvecback[pba->index_bg_h_scf])*delta_s_scf;
       }
 
       if (ppt->gauge == synchronous) {
         dy[pv->index_pt_phi_prime_scf] =  - 2.*a_prime_over_a*y[pv->index_pt_phi_prime_scf]
           - (k2 + a2*pvecback[pba->index_bg_ddV_scf])*y[pv->index_pt_phi_scf]
           - metric_continuity*pvecback[pba->index_bg_phi_prime_scf]
-          + a2*delta_Q_scf;
+          + a2*delta_Q_scf
+          - (a2*pvecback[pba->index_bg_df_scf] + k2*pvecback[pba->index_bg_h_scf])*delta_s_scf;
         }
     }
 

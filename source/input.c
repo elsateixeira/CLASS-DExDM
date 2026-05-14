@@ -3408,6 +3408,8 @@ int input_read_parameters_species(struct file_content * pfc,
     // ET: added extra locals here instead of params
     double scf_lambda_val = 0., scf_V0_val = 1., scf_lambda_2_val = 0., scf_V0_2_val = 0.;
     double scf_C0_val = 0., scf_beta_val = 0., scf_alpha_val = 0., scf_D0_val = 0.;
+    double scf_f0_val = 0., scf_h0_val = 0.;
+    double scf_As_val = 0., scf_ns_val = 0., scf_kp_val = 1., scf_kc_val = 1., scf_pc_val = 1.;
     double scf_phi_ini_val = 0., scf_phi_prime_ini_val = 0.;
     int flag_scf_params = _FALSE_;
     int flag_scf_potential = _FALSE_;
@@ -3416,9 +3418,12 @@ int input_read_parameters_species(struct file_content * pfc,
     int flag_V0 = _FALSE_, flag_lambda = _FALSE_;
     int flag_V0_2 = _FALSE_, flag_lambda_2 = _FALSE_;
     int flag_C0 = _FALSE_, flag_beta = _FALSE_, flag_alpha = _FALSE_, flag_D0 = _FALSE_;
+    int flag_f0 = _FALSE_, flag_h0 = _FALSE_;
+    int flag_As = _FALSE_, flag_ns = _FALSE_, flag_kp = _FALSE_, flag_kc = _FALSE_, flag_pc = _FALSE_;
     int flag_phi_ini = _FALSE_, flag_phi_prime_ini = _FALSE_;
     int flag_explicit = _FALSE_;
     int flag_explicit_potential = _FALSE_;
+    int flag_explicit_entropy = _FALSE_;
 
     /** 8.b.1) ET: SCF potential and coupling type */
     class_call(parser_read_string(pfc,
@@ -3564,6 +3569,27 @@ int input_read_parameters_species(struct file_content * pfc,
     class_call(parser_read_double(pfc,"scf_D0",&scf_D0_val,&flag_D0,errmsg),
                errmsg,
                errmsg);
+    class_call(parser_read_double(pfc,"scf_f0",&scf_f0_val,&flag_f0,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_h0",&scf_h0_val,&flag_h0,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_As",&scf_As_val,&flag_As,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_ns",&scf_ns_val,&flag_ns,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_kp",&scf_kp_val,&flag_kp,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_kc",&scf_kc_val,&flag_kc,errmsg),
+               errmsg,
+               errmsg);
+    class_call(parser_read_double(pfc,"scf_pc",&scf_pc_val,&flag_pc,errmsg),
+               errmsg,
+               errmsg);
     class_call(parser_read_double(pfc,"scf_phi_ini",&scf_phi_ini_val,&flag_phi_ini,errmsg),
                errmsg,
                errmsg);
@@ -3572,7 +3598,8 @@ int input_read_parameters_species(struct file_content * pfc,
                errmsg);
     // ET: if any of the explicit parameters are set, we will ignore scf_parameters and use these instead
     flag_explicit_potential = (flag_V0 || flag_lambda || flag_V0_2 || flag_lambda_2 || flag_C0 || flag_beta || flag_alpha || flag_D0);
-    flag_explicit = (flag_explicit_potential || flag_phi_ini || flag_phi_prime_ini);
+    flag_explicit_entropy = (flag_f0 || flag_h0 || flag_As || flag_ns || flag_kp || flag_kc || flag_pc);
+    flag_explicit = (flag_explicit_potential || flag_explicit_entropy || flag_phi_ini || flag_phi_prime_ini);
 
     /** 8.b.4) ET: Backward-compatible SCF parameter list */
     class_call(parser_read_list_of_doubles(pfc,
@@ -3607,6 +3634,7 @@ int input_read_parameters_species(struct file_content * pfc,
     }
 
     if (pba->use_scf_parameters == _TRUE_) {
+      int scf_entropy_base = (pba->scf_potential == scf_potential_double_exp) ? 8 : 6;
       if (pba->scf_potential == scf_potential_exp) {
         class_test(pba->scf_parameters_size < 2,
                    errmsg,
@@ -3631,6 +3659,15 @@ int input_read_parameters_species(struct file_content * pfc,
         if (pba->scf_parameters_size > 6) pba->alpha_scf = pba->scf_parameters[6];
         if (pba->scf_parameters_size > 7) pba->D0_scf = pba->scf_parameters[7];
       }
+      if (flag_explicit_entropy == _FALSE_) {
+        if (pba->scf_parameters_size > scf_entropy_base + 0) pba->f0_scf = pba->scf_parameters[scf_entropy_base + 0];
+        if (pba->scf_parameters_size > scf_entropy_base + 1) pba->h0_scf = pba->scf_parameters[scf_entropy_base + 1];
+        if (pba->scf_parameters_size > scf_entropy_base + 2) pba->As_scf = pba->scf_parameters[scf_entropy_base + 2];
+        if (pba->scf_parameters_size > scf_entropy_base + 3) pba->ns_scf = pba->scf_parameters[scf_entropy_base + 3];
+        if (pba->scf_parameters_size > scf_entropy_base + 4) pba->kp_scf = pba->scf_parameters[scf_entropy_base + 4];
+        if (pba->scf_parameters_size > scf_entropy_base + 5) pba->kc_scf = pba->scf_parameters[scf_entropy_base + 5];
+        if (pba->scf_parameters_size > scf_entropy_base + 6) pba->pc_scf = pba->scf_parameters[scf_entropy_base + 6];
+      }
     }
     else {
       if (flag_lambda == _TRUE_) pba->lambda_scf = scf_lambda_val;
@@ -3644,6 +3681,13 @@ int input_read_parameters_species(struct file_content * pfc,
       if (flag_phi_ini == _TRUE_) pba->phi_ini_scf = scf_phi_ini_val;
       if (flag_phi_prime_ini == _TRUE_) pba->phi_prime_ini_scf = scf_phi_prime_ini_val;
     }
+    if (flag_f0 == _TRUE_) pba->f0_scf = scf_f0_val;
+    if (flag_h0 == _TRUE_) pba->h0_scf = scf_h0_val;
+    if (flag_As == _TRUE_) pba->As_scf = scf_As_val;
+    if (flag_ns == _TRUE_) pba->ns_scf = scf_ns_val;
+    if (flag_kp == _TRUE_) pba->kp_scf = scf_kp_val;
+    if (flag_kc == _TRUE_) pba->kc_scf = scf_kc_val;
+    if (flag_pc == _TRUE_) pba->pc_scf = scf_pc_val;
 
     /** 8.b.5) SCF initial conditions from attractor solution */
     class_call(parser_read_string(pfc,
@@ -6297,6 +6341,13 @@ int input_default_params(struct background *pba,
   pba->C0_scf = 0.;
   pba->alpha_scf = 0.;
   pba->D0_scf = 0.;
+  pba->f0_scf = 0.;
+  pba->h0_scf = 0.;
+  pba->As_scf = 0.;
+  pba->ns_scf = 0.;
+  pba->kp_scf = 1.;
+  pba->kc_scf = 1.;
+  pba->pc_scf = 1.;
   /** 9.b.2) Initial conditions from attractor solution */
   pba->attractor_ic_scf = _TRUE_;
   pba->phi_ini_scf = 1;                // MZ: initial conditions are as multiplicative

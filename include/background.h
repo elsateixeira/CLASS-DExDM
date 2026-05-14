@@ -152,6 +152,14 @@ struct background
   double C0_scf;        /**< ET: conformal coupling amplitude */
   double alpha_scf;     /**< ET: disformal coupling strength */
   double D0_scf;        /**< ET: disformal coupling scale (in meV^-1) */
+  /* ET: entropy-coupling/source parameters (ported from class_entropy, merged into IDM flow) */
+  double f0_scf;        /**< entropy force coefficient entering f_scf(phi) */
+  double h0_scf;        /**< entropy mixing coefficient entering h_scf(phi) */
+  double As_scf;        /**< amplitude of entropy source mode delta_s */
+  double ns_scf;        /**< tilt of entropy source mode delta_s */
+  double kp_scf;        /**< pivot scale for entropy source mode delta_s */
+  double kc_scf;        /**< cutoff scale for entropy source mode delta_s */
+  double pc_scf;        /**< cutoff power for entropy source mode delta_s */
   short attractor_ic_scf;  /**< whether the scalar field has attractor initial conditions */
   int scf_tuning_index;    /**< index in scf_parameters used for tuning */
   double phi_ini_scf;      /**< \f$ \phi(t_0) \f$: scalar field initial value */
@@ -216,6 +224,15 @@ struct background
   int index_bg_V_scf;         /**< scalar field potential V */
   int index_bg_dV_scf;        /**< scalar field potential derivative V' */
   int index_bg_ddV_scf;       /**< scalar field potential second derivative V'' */
+  int index_bg_f_scf;         /**< entropy function f_scf(phi) */
+  int index_bg_df_scf;        /**< first derivative of f_scf(phi) */
+  int index_bg_ddf_scf;       /**< second derivative of f_scf(phi) */
+  int index_bg_h_scf;         /**< entropy function h_scf(phi) */
+  int index_bg_As_scf;        /**< entropy source amplitude */
+  int index_bg_ns_scf;        /**< entropy source tilt */
+  int index_bg_kp_scf;        /**< entropy source pivot scale */
+  int index_bg_kc_scf;        /**< entropy source cutoff scale */
+  int index_bg_pc_scf;        /**< entropy source cutoff power */
   int index_bg_rho_scf;       /**< scalar field energy density */
   int index_bg_p_scf;         /**< scalar field pressure */
   int index_bg_p_prime_scf;         /**< scalar field pressure */
@@ -614,6 +631,47 @@ extern "C" {
   double ddV_scf(
                   struct background *pba,
                   double phi
+                );
+
+  /* ET: entropy source functions and parameters */
+  double f_scf(
+               struct background *pba,
+               double phi
+               );
+
+  double df_scf(
+                struct background *pba,
+                double phi
+                );
+
+  double ddf_scf(
+                 struct background *pba,
+                 double phi
+                 );
+
+  double h_scf(
+               struct background *pba,
+               double phi
+               );
+
+  double As_scf(
+                struct background *pba
+                );
+
+  double ns_scf(
+                struct background *pba
+                );
+
+  double kp_scf(
+                struct background *pba
+                );
+
+  double kc_scf(
+                struct background *pba
+                );
+
+  double pc_scf(
+                struct background *pba
                 );
 
   /* ET: conformal factor and its derivatives */
