@@ -3408,8 +3408,8 @@ int input_read_parameters_species(struct file_content * pfc,
     // ET: added extra locals here instead of params
     double scf_lambda_val = 0., scf_V0_val = 1., scf_lambda_2_val = 0., scf_V0_2_val = 0.;
     double scf_C0_val = 0., scf_beta_val = 0., scf_alpha_val = 0., scf_D0_val = 0.;
-    double scf_veta_val = 0., scf_log10minusveta_val = 0.;
-    double scf_f0_val = 0., scf_h0_val = 0.;
+    double scf_gamma_val = 0., scf_log10minus_gamma_val = 0.;
+    double scf_g0_val = 0., scf_h0_val = 0.;
     double scf_As_val = 0., scf_ns_val = 0., scf_kp_val = 1., scf_kc_val = 1., scf_pc_val = 1.;
     double scf_phi_ini_val = 0., scf_phi_prime_ini_val = 0.;
     int flag_scf_params = _FALSE_;
@@ -3418,8 +3418,8 @@ int input_read_parameters_species(struct file_content * pfc,
     int flag_scf_shoot_target = _FALSE_;
     int flag_V0 = _FALSE_, flag_lambda = _FALSE_;
     int flag_V0_2 = _FALSE_, flag_lambda_2 = _FALSE_;
-    int flag_C0 = _FALSE_, flag_beta = _FALSE_, flag_alpha = _FALSE_, flag_D0 = _FALSE_, flag_veta = _FALSE_, flag_log10minusveta = _FALSE_;
-    int flag_f0 = _FALSE_, flag_h0 = _FALSE_;
+    int flag_C0 = _FALSE_, flag_beta = _FALSE_, flag_alpha = _FALSE_, flag_D0 = _FALSE_, flag_gamma = _FALSE_, flag_log10minus_gamma = _FALSE_;
+    int flag_g0 = _FALSE_, flag_h0 = _FALSE_;
     int flag_As = _FALSE_, flag_ns = _FALSE_, flag_kp = _FALSE_, flag_kc = _FALSE_, flag_pc = _FALSE_;
     int flag_phi_ini = _FALSE_, flag_phi_prime_ini = _FALSE_;
     int flag_explicit = _FALSE_;
@@ -3576,17 +3576,17 @@ int input_read_parameters_species(struct file_content * pfc,
     class_call(parser_read_double(pfc,"scf_D0",&scf_D0_val,&flag_D0,errmsg),
                errmsg,
                errmsg);
-    class_call(parser_read_double(pfc,"scf_veta",&scf_veta_val,&flag_veta,errmsg),
+    class_call(parser_read_double(pfc,"scf_gamma",&scf_gamma_val,&flag_gamma,errmsg),
                errmsg,
                errmsg);
-    class_call(parser_read_double(pfc,"scf_log10minusveta",&scf_log10minusveta_val,&flag_log10minusveta,errmsg),
+    class_call(parser_read_double(pfc,"scf_log10minus_gamma",&scf_log10minus_gamma_val,&flag_log10minus_gamma,errmsg),
                errmsg,
                errmsg);
-    class_test((flag_veta == _TRUE_) && (flag_log10minusveta == _TRUE_),
+    class_test((flag_gamma == _TRUE_) && (flag_log10minus_gamma == _TRUE_),
                errmsg,
-               "You cannot set both scf_veta and scf_log10minusveta. Choose one.");
+               "You cannot set both scf_gamma and scf_log10minus_gamma. Choose one.");
     /* ET: explicit entropy-coupling/source inputs */
-    class_call(parser_read_double(pfc,"scf_f0",&scf_f0_val,&flag_f0,errmsg),
+    class_call(parser_read_double(pfc,"scf_g0",&scf_g0_val,&flag_g0,errmsg),
                errmsg,
                errmsg);
     class_call(parser_read_double(pfc,"scf_h0",&scf_h0_val,&flag_h0,errmsg),
@@ -3614,8 +3614,8 @@ int input_read_parameters_species(struct file_content * pfc,
                errmsg,
                errmsg);
     // ET: if any of the explicit parameters are set, we will ignore scf_parameters and use these instead
-    flag_explicit_potential = (flag_V0 || flag_lambda || flag_V0_2 || flag_lambda_2 || flag_C0 || flag_beta || flag_alpha || flag_D0 || flag_veta || flag_log10minusveta);
-    flag_explicit_entropy = (flag_f0 || flag_h0 || flag_As || flag_ns || flag_kp || flag_kc || flag_pc);
+    flag_explicit_potential = (flag_V0 || flag_lambda || flag_V0_2 || flag_lambda_2 || flag_C0 || flag_beta || flag_alpha || flag_D0 || flag_gamma || flag_log10minus_gamma);
+    flag_explicit_entropy = (flag_g0 || flag_h0 || flag_As || flag_ns || flag_kp || flag_kc || flag_pc);
     flag_explicit = (flag_explicit_potential || flag_explicit_entropy || flag_phi_ini || flag_phi_prime_ini);
 
     /** 8.b.4) ET: Backward-compatible SCF parameter list */
@@ -3678,15 +3678,15 @@ int input_read_parameters_species(struct file_content * pfc,
       }
       /* ET: optional momentum-coupling entry in scf_parameters (before entropy block) */
       if ((pba->scf_coupling == scf_coupling_momentum) &&
-          (flag_veta == _FALSE_) &&
-          (flag_log10minusveta == _FALSE_) &&
+          (flag_gamma == _FALSE_) &&
+          (flag_log10minus_gamma == _FALSE_) &&
           (pba->scf_parameters_size > scf_entropy_base)) {
-        pba->scf_veta = pba->scf_parameters[scf_entropy_base];
+        pba->scf_gamma = pba->scf_parameters[scf_entropy_base];
         scf_entropy_base += 1;
       }
       /* ET: backward-compatible entropy block appended to scf_parameters */
       if (flag_explicit_entropy == _FALSE_) {
-        if (pba->scf_parameters_size > scf_entropy_base + 0) pba->f0_scf = pba->scf_parameters[scf_entropy_base + 0];
+        if (pba->scf_parameters_size > scf_entropy_base + 0) pba->g0_scf = pba->scf_parameters[scf_entropy_base + 0];
         if (pba->scf_parameters_size > scf_entropy_base + 1) pba->h0_scf = pba->scf_parameters[scf_entropy_base + 1];
         if (pba->scf_parameters_size > scf_entropy_base + 2) pba->As_scf = pba->scf_parameters[scf_entropy_base + 2];
         if (pba->scf_parameters_size > scf_entropy_base + 3) pba->ns_scf = pba->scf_parameters[scf_entropy_base + 3];
@@ -3707,10 +3707,10 @@ int input_read_parameters_species(struct file_content * pfc,
       if (flag_phi_ini == _TRUE_) pba->phi_ini_scf = scf_phi_ini_val;
       if (flag_phi_prime_ini == _TRUE_) pba->phi_prime_ini_scf = scf_phi_prime_ini_val;
     }
-    if (flag_veta == _TRUE_) pba->scf_veta = scf_veta_val;
-    if (flag_log10minusveta == _TRUE_) pba->scf_veta = -pow(10.0,scf_log10minusveta_val);
+    if (flag_gamma == _TRUE_) pba->scf_gamma = scf_gamma_val;
+    if (flag_log10minus_gamma == _TRUE_) pba->scf_gamma = -pow(10.0,scf_log10minus_gamma_val);
     /* ET: explicit entropy inputs override list/default values */
-    if (flag_f0 == _TRUE_) pba->f0_scf = scf_f0_val;
+    if (flag_g0 == _TRUE_) pba->g0_scf = scf_g0_val;
     if (flag_h0 == _TRUE_) pba->h0_scf = scf_h0_val;
     if (flag_As == _TRUE_) pba->As_scf = scf_As_val;
     if (flag_ns == _TRUE_) pba->ns_scf = scf_ns_val;
@@ -3764,14 +3764,14 @@ int input_read_parameters_species(struct file_content * pfc,
       }
     }
     if (pba->scf_coupling == scf_coupling_momentum) {
-      if (pba->scf_veta == 0.) {
+      if (pba->scf_gamma == 0.) {
         if (pba->background_verbose > 1) {
-          printf("Warning: scf_coupling_type=momentum but scf_veta is zero.\n");
+          printf("Warning: scf_coupling_type=momentum but scf_gamma is zero.\n");
         }
       }
-      class_test(fabs(1.-2.*pba->scf_veta) < 1e-12,
+      class_test(fabs(1.-2.*pba->scf_gamma) < 1e-12,
                  errmsg,
-                 "For momentum coupling you must avoid scf_veta=1/2 (singular 1-2*scf_veta denominator).");
+                 "For momentum coupling you must avoid scf_gamma=1/2 (singular 1-2*scf_gamma denominator).");
     }
 
     /** 8.b.7) ET: SCF tuning parameter (scf_parameters only) */
@@ -6371,6 +6371,11 @@ int input_default_params(struct background *pba,
   pba->scf_potential = scf_potential_exp;
   pba->scf_coupling = scf_coupling_none;
   pba->has_idm_de = _FALSE_;
+  pba->has_idm_de_q = _FALSE_;
+  pba->has_scf_conformal = _FALSE_;
+  pba->has_scf_disformal = _FALSE_;
+  pba->has_scf_entropy = _FALSE_;
+  pba->has_scf_momentum = _FALSE_;
   pba->scf_shooting_target = scf_shoot_none;
   pba->V0_scf = 0.;
   pba->lambda_scf = 0.;
@@ -6380,9 +6385,9 @@ int input_default_params(struct background *pba,
   pba->C0_scf = 0.;
   pba->alpha_scf = 0.;
   pba->D0_scf = 0.;
-  pba->scf_veta = 0.;
+  pba->scf_gamma = 0.;
   /* ET: entropy-coupling/source defaults */
-  pba->f0_scf = 0.;
+  pba->g0_scf = 0.;
   pba->h0_scf = 0.;
   pba->As_scf = 0.;
   pba->ns_scf = 0.;

@@ -398,7 +398,7 @@ int background_functions(
   double w_fld, dw_over_da, integral_fld;
   /* scalar field quantities */
   double phi, phi_prime, rho_idm, V0_scf; /* ET: Added extra variables here */
-  double Zbg, F, Fz, Fzz, kinetic_prefac;
+  double scf_mom, kinetic_prefac; /* ET: scf_mom is Z in 1307.0458 */
   /* Since we only know a_prime_over_a after we have rho_tot,
      it is not possible to simply sum up p_tot_prime directly.
      Instead we sum up dp_dloga = p_prime/a_prime_over_a. The formula is
@@ -475,30 +475,41 @@ int background_functions(
   if (pba->has_scf == _TRUE_) {
     phi = pvecback_B[pba->index_bi_phi_scf];
     phi_prime = pvecback_B[pba->index_bi_phi_prime_scf];
+    scf_mom = -phi_prime/a;
     pvecback[pba->index_bg_phi_scf] = phi; // value of the scalar field phi
     pvecback[pba->index_bg_phi_prime_scf] = phi_prime; // value of the scalar field phi derivative wrt conformal time
+    pvecback[pba->index_bg_mom_scf] = scf_mom; // ET: background momentum variable used in momentum coupling
     pvecback[pba->index_bg_V_scf] = V_scf(pba,phi); //V_scf(pba,phi); //write here potential as function of phi
     pvecback[pba->index_bg_dV_scf] = dV_scf(pba,phi); // dV_scf(pba,phi); //potential' as function of phi
     pvecback[pba->index_bg_ddV_scf] = ddV_scf(pba,phi); // ddV_scf(pba,phi); //potential'' as function of phi
-    /* ET: entropy-coupling functions/source spectrum evaluated in background */
-    pvecback[pba->index_bg_f_scf] = f_scf(pba,phi);
-    pvecback[pba->index_bg_df_scf] = df_scf(pba,phi);
-    pvecback[pba->index_bg_ddf_scf] = ddf_scf(pba,phi);
-    pvecback[pba->index_bg_h_scf] = h_scf(pba,phi);
-    pvecback[pba->index_bg_As_scf] = As_scf(pba);
-    pvecback[pba->index_bg_ns_scf] = ns_scf(pba);
-    pvecback[pba->index_bg_kp_scf] = kp_scf(pba);
-    pvecback[pba->index_bg_kc_scf] = kc_scf(pba);
-    pvecback[pba->index_bg_pc_scf] = pc_scf(pba);
+    /* ET: evaluate entropy coupling functions only when entropy coupling is active */
+    if (pba->has_scf_entropy == _TRUE_) {
+      pvecback[pba->index_bg_g_scf] = g_scf(pba,phi);
+      pvecback[pba->index_bg_dg_scf] = dg_scf(pba,phi);
+      pvecback[pba->index_bg_ddg_scf] = ddg_scf(pba,phi);
+      pvecback[pba->index_bg_h_scf] = h_scf(pba,phi);
+      pvecback[pba->index_bg_As_scf] = As_scf(pba);
+      pvecback[pba->index_bg_ns_scf] = ns_scf(pba);
+      pvecback[pba->index_bg_kp_scf] = kp_scf(pba);
+      pvecback[pba->index_bg_kc_scf] = kc_scf(pba);
+      pvecback[pba->index_bg_pc_scf] = pc_scf(pba);
+    }
+    else {
+      /* ET: set to defaults when entropy coupling is not used */
+      pvecback[pba->index_bg_g_scf] = 0.;
+      pvecback[pba->index_bg_dg_scf] = 0.;
+      pvecback[pba->index_bg_ddg_scf] = 0.;
+      pvecback[pba->index_bg_h_scf] = 0.;
+      pvecback[pba->index_bg_As_scf] = 0.;
+      pvecback[pba->index_bg_ns_scf] = 0.;
+      pvecback[pba->index_bg_kp_scf] = 1.;
+      pvecback[pba->index_bg_kc_scf] = 1.;
+      pvecback[pba->index_bg_pc_scf] = 1.;
+    }
     if (pba->scf_coupling == scf_coupling_momentum) {
-      /* ET: Type-3 momentum coupling modifies the effective kinetic prefactor (1-2*veta)/2 */
-      Zbg = -phi_prime/a;
-      F = pba->scf_veta*Zbg*Zbg;
-      Fz = 2.*pba->scf_veta*Zbg;
-      Fzz = 2.*pba->scf_veta;
-      (void)Fzz;
-      pvecback[pba->index_bg_rho_scf] = (((Zbg*Zbg)/2.) + F - Zbg*Fz + V_scf(pba,phi))/3.;
-      pvecback[pba->index_bg_p_scf] = (((Zbg*Zbg)/2.) - F - V_scf(pba,phi))/3.;
+      /* ET: Type-3 momentum coupling with scf_mom = -phi'/a and F(scf_mom) defined as a separate function that can be easily changed*/
+      pvecback[pba->index_bg_rho_scf] = (((scf_mom*scf_mom)/2.) + f_scf(pba,scf_mom) - scf_mom*df_scf(pba,scf_mom) + V_scf(pba,phi))/3.;
+      pvecback[pba->index_bg_p_scf] = (((scf_mom*scf_mom)/2.) - f_scf(pba,scf_mom) - V_scf(pba,phi))/3.;
     }
     else {
       pvecback[pba->index_bg_rho_scf] = (phi_prime*phi_prime/(2*a*a) + V_scf(pba,phi))/3.; // energy of the scalar field. The field units are set automatically by setting the initial conditions
@@ -513,7 +524,7 @@ int background_functions(
     //rho_m += pvecback[pba->index_bg_rho_scf] - 3.* pvecback[pba->index_bg_p_scf]; //the rest contributes matter
     //printf(" a= %e, Omega_scf = %f, \n ",a, pvecback[pba->index_bg_rho_scf]/rho_tot );
     //ET: Add coupling functions for coupled dark energy models
-    if (pba->has_idm_de == _TRUE_) {
+    if (pba->has_idm_de_q == _TRUE_) {
       pvecback[pba->index_bg_C_scf] = C_scf(pba,phi); // ET: conformal factor as function of phi
       pvecback[pba->index_bg_dC_scf] = dC_scf(pba,phi); // ET: conformal factor' as function of phi
       pvecback[pba->index_bg_ddC_scf] = ddC_scf(pba,phi); // ET: conformal factor'' as function of phi
@@ -616,15 +627,15 @@ int background_functions(
   pvecback[pba->index_bg_H_prime] = - (3./2.) * (rho_tot + p_tot) * a + pba->K/a;
 
   /* ET: Added extra vectors here that need previous definitions for coupled dark energy models */
-  if ((pba->has_scf == _TRUE_) && (pba->scf_coupling == scf_coupling_momentum)) {
+  if (pba->has_scf_momentum == _TRUE_) {
     /* ET: p'_scf for momentum coupling */
-    kinetic_prefac = (1.-2.*pba->scf_veta);
+    kinetic_prefac = (1.-2.*pba->scf_gamma);
     pvecback[pba->index_bg_p_prime_scf] = pvecback[pba->index_bg_phi_prime_scf]*
       (-kinetic_prefac*pvecback[pba->index_bg_phi_prime_scf]*pvecback[pba->index_bg_H]/a
        -2./3.*pvecback[pba->index_bg_dV_scf]);
     pvecback[pba->index_bg_p_tot_prime] += pvecback[pba->index_bg_p_prime_scf];
   }
-  else if (pba->has_idm_de == _TRUE_) {
+  else if (pba->has_idm_de_q == _TRUE_) {
     pvecback[pba->index_bg_Q_scf] = Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback); /** background coupling function Q */
     pvecback[pba->index_bg_B_cff_scf] = B_cff_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
     pvecback[pba->index_bg_B1_scf] = B1_scf(pba,phi,phi_prime,rho_idm,a,pvecback);
@@ -643,7 +654,7 @@ int background_functions(
   /* Derivative of total pressure w.r.t. conformal time */
   pvecback[pba->index_bg_p_tot_prime] = a*pvecback[pba->index_bg_H]*dp_dloga;
    /* ET: Added coupling here */
-  if (pba->has_idm_de == _TRUE_) {
+  if (pba->has_idm_de_q == _TRUE_) {
     /** The contribution of scf was not added to dp_dloga, add p_scf_prime here: */
    pvecback[pba->index_bg_p_prime_scf] = pvecback[pba->index_bg_phi_prime_scf]*
       (-pvecback[pba->index_bg_phi_prime_scf]*pvecback[pba->index_bg_H]/a-2./3.*pvecback[pba->index_bg_dV_scf]+1./3*Q_scf(pba,phi,phi_prime,rho_idm,a,pvecback));
@@ -651,7 +662,7 @@ int background_functions(
   }
 
   /* ET: compute scf without coupling */
-  if ((pba->has_scf == _TRUE_) && (pba->has_idm_de == _FALSE_)) {
+  if ((pba->has_scf == _TRUE_) && (pba->has_scf_momentum == _FALSE_) && (pba->has_idm_de_q == _FALSE_)) {
     /** The contribution of scf was not added to dp_dloga, add p_scf_prime here: */
    pvecback[pba->index_bg_p_prime_scf] = pvecback[pba->index_bg_phi_prime_scf]*
       (-pvecback[pba->index_bg_phi_prime_scf]*pvecback[pba->index_bg_H]/a-2./3.*pvecback[pba->index_bg_dV_scf]);
@@ -1068,8 +1079,18 @@ int background_indices(
   if (pba->Omega0_scf != 0.)
     pba->has_scf = _TRUE_;
 
-  // ET: define the flag for coupled dark energy models, which is true if we have a scalar field, and an interacting dark matter component, and a non-zero coupling between them. Maybe safer to specify types of coupling in case user defines something random?
+  // ET: define coupling activation flags
   pba->has_idm_de = (pba->has_idm == _TRUE_) && (pba->has_scf == _TRUE_) && (pba->scf_coupling != scf_coupling_none);
+  pba->has_scf_conformal = (pba->has_idm_de == _TRUE_) &&
+    ((pba->scf_coupling == scf_coupling_conformal) || (pba->scf_coupling == scf_coupling_mixed));
+  pba->has_scf_disformal = (pba->has_idm_de == _TRUE_) &&
+    ((pba->scf_coupling == scf_coupling_disformal) || (pba->scf_coupling == scf_coupling_mixed));
+  pba->has_scf_entropy = (pba->has_idm_de == _TRUE_) && (pba->scf_coupling == scf_coupling_entropy);
+  pba->has_scf_momentum = (pba->has_idm_de == _TRUE_) && (pba->scf_coupling == scf_coupling_momentum);
+  pba->has_idm_de_q = (pba->has_idm_de == _TRUE_) &&
+    (pba->scf_coupling == scf_coupling_conformal ||
+     pba->scf_coupling == scf_coupling_disformal ||
+     pba->scf_coupling == scf_coupling_mixed);
 
   if (pba->Omega0_lambda != 0.)
     pba->has_lambda = _TRUE_;
@@ -1131,13 +1152,14 @@ int background_indices(
   /* - indices for scalar field */
   class_define_index(pba->index_bg_phi_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_phi_prime_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_mom_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_V_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_dV_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_ddV_scf,pba->has_scf,index_bg,1);
   /* ET: entropy-coupling/source-function indices */
-  class_define_index(pba->index_bg_f_scf,pba->has_scf,index_bg,1);
-  class_define_index(pba->index_bg_df_scf,pba->has_scf,index_bg,1);
-  class_define_index(pba->index_bg_ddf_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_g_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_dg_scf,pba->has_scf,index_bg,1);
+  class_define_index(pba->index_bg_ddg_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_h_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_As_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_ns_scf,pba->has_scf,index_bg,1);
@@ -1148,19 +1170,19 @@ int background_indices(
   class_define_index(pba->index_bg_p_scf,pba->has_scf,index_bg,1);
   class_define_index(pba->index_bg_p_prime_scf,pba->has_scf,index_bg,1);
   /* ET: Added corresponding extra coupling indices here */
-  class_define_index(pba->index_bg_C_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_dC_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_ddC_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_D_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_dD_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_ddD_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_Q_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_B_cff_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_B1_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_B2_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_B3_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_B4_scf,pba->has_idm_de,index_bg,1);
-  class_define_index(pba->index_bg_B5_scf,pba->has_idm_de,index_bg,1);
+  class_define_index(pba->index_bg_C_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_dC_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_ddC_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_D_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_dD_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_ddD_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_Q_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_B_cff_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_B1_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_B2_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_B3_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_B4_scf,pba->has_idm_de_q,index_bg,1);
+  class_define_index(pba->index_bg_B5_scf,pba->has_idm_de_q,index_bg,1);
 
   /* - index for Lambda */
   class_define_index(pba->index_bg_rho_lambda,pba->has_lambda,index_bg,1);
@@ -2587,34 +2609,35 @@ int background_output_titles(
   class_store_columntitle(titles,"(.)p_prime_scf",pba->has_scf);
   class_store_columntitle(titles,"phi_scf",pba->has_scf);
   class_store_columntitle(titles,"phi'_scf",pba->has_scf);
+  class_store_columntitle(titles,"scf_mom",pba->has_scf);
   class_store_columntitle(titles,"V_scf",pba->has_scf);
   class_store_columntitle(titles,"V'_scf",pba->has_scf);
   class_store_columntitle(titles,"V''_scf",pba->has_scf);
   /* ET: entropy-coupling/source columns */
-  class_store_columntitle(titles,"f_scf",pba->has_scf);
-  class_store_columntitle(titles,"df_scf",pba->has_scf);
-  class_store_columntitle(titles,"ddf_scf",pba->has_scf);
-  class_store_columntitle(titles,"h_scf",pba->has_scf);
-  class_store_columntitle(titles,"As_scf",pba->has_scf);
-  class_store_columntitle(titles,"ns_scf",pba->has_scf);
-  class_store_columntitle(titles,"kp_scf",pba->has_scf);
-  class_store_columntitle(titles,"kc_scf",pba->has_scf);
-  class_store_columntitle(titles,"pc_scf",pba->has_scf);
+  class_store_columntitle(titles,"g_scf",pba->has_scf_entropy);
+  class_store_columntitle(titles,"dg_scf",pba->has_scf_entropy);
+  class_store_columntitle(titles,"ddg_scf",pba->has_scf_entropy);
+  class_store_columntitle(titles,"h_scf",pba->has_scf_entropy);
+  class_store_columntitle(titles,"As_scf",pba->has_scf_entropy);
+  class_store_columntitle(titles,"ns_scf",pba->has_scf_entropy);
+  class_store_columntitle(titles,"kp_scf",pba->has_scf_entropy);
+  class_store_columntitle(titles,"kc_scf",pba->has_scf_entropy);
+  class_store_columntitle(titles,"pc_scf",pba->has_scf_entropy);
 
   /* ET: Add new variables to print */
-  class_store_columntitle(titles,"C_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"dC_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"ddC_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"D_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"dD_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"ddD_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"Q_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"B_cff_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"B1_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"B2_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"B3_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"B4_scf",pba->has_idm_de);
-  class_store_columntitle(titles,"B5_scf",pba->has_idm_de);
+  class_store_columntitle(titles,"C_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"dC_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"ddC_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"D_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"dD_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"ddD_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"Q_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"B_cff_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"B1_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"B2_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"B3_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"B4_scf",pba->has_idm_de_q);
+  class_store_columntitle(titles,"B5_scf",pba->has_idm_de_q);
 
   class_store_columntitle(titles,"(.)rho_tot",_TRUE_);
   class_store_columntitle(titles,"(.)p_tot",_TRUE_);
@@ -2688,34 +2711,35 @@ int background_output_data(
     class_store_double(dataptr,pvecback[pba->index_bg_p_prime_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_phi_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_phi_prime_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_mom_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_V_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_dV_scf],pba->has_scf,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_ddV_scf],pba->has_scf,storeidx);
     /* ET: entropy-coupling/source output values */
-    class_store_double(dataptr,pvecback[pba->index_bg_f_scf],pba->has_scf,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_df_scf],pba->has_scf,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_ddf_scf],pba->has_scf,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_h_scf],pba->has_scf,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_As_scf],pba->has_scf,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_ns_scf],pba->has_scf,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_kp_scf],pba->has_scf,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_kc_scf],pba->has_scf,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_pc_scf],pba->has_scf,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_g_scf],pba->has_scf_entropy,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_dg_scf],pba->has_scf_entropy,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_ddg_scf],pba->has_scf_entropy,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_h_scf],pba->has_scf_entropy,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_As_scf],pba->has_scf_entropy,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_ns_scf],pba->has_scf_entropy,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_kp_scf],pba->has_scf_entropy,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_kc_scf],pba->has_scf_entropy,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_pc_scf],pba->has_scf_entropy,storeidx);
 
     /* ET: Add new variables to print */
-    class_store_double(dataptr,pvecback[pba->index_bg_C_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_dC_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_ddC_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_D_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_dD_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_ddD_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_Q_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_B_cff_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_B1_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_B2_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_B3_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_B4_scf],pba->has_idm_de,storeidx);
-    class_store_double(dataptr,pvecback[pba->index_bg_B5_scf],pba->has_idm_de,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_C_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_dC_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_ddC_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_D_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_dD_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_ddD_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_Q_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B_cff_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B1_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B2_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B3_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B4_scf],pba->has_idm_de_q,storeidx);
+    class_store_double(dataptr,pvecback[pba->index_bg_B5_scf],pba->has_idm_de_q,storeidx);
 
     class_store_double(dataptr,pvecback[pba->index_bg_rho_tot],_TRUE_,storeidx);
     class_store_double(dataptr,pvecback[pba->index_bg_p_tot],_TRUE_,storeidx);
@@ -2835,7 +2859,7 @@ int background_derivs(
   }
 
   // ET: uncoupled scf evolution
-  if ((pba->has_scf == _TRUE_) && (pba->has_idm_de == _FALSE_)) {
+  if ((pba->has_scf == _TRUE_) && (pba->has_scf_momentum == _FALSE_) && (pba->has_idm_de_q == _FALSE_)) {
     /** - Scalar field equation: \f$ \phi'' + 2 a H \phi' + a^2 dV = 0 \f$  (note H is wrt cosmological time)
         written as \f$ d\phi/dlna = phi' / (aH) \f$ and \f$ d\phi'/dlna = -2*phi' - (a/H) dV \f$ */
     dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
@@ -2843,16 +2867,16 @@ int background_derivs(
   }
 
   // ET: coupled scf and idm evolution
-  if ((pba->has_scf == _TRUE_) && (pba->has_idm_de == _TRUE_) && (pba->scf_coupling == scf_coupling_momentum)){
+  if (pba->has_scf_momentum == _TRUE_){
     dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
     dy[pba->index_bi_phi_prime_scf] = - 2*y[pba->index_bi_phi_prime_scf]
-      - a*dV_scf(pba,y[pba->index_bi_phi_scf])/(H*(1.-2.*pba->scf_veta));
+      - a*dV_scf(pba,y[pba->index_bi_phi_scf])/(H*(1.-2.*pba->scf_gamma));
     /* ET: Type-3 momentum coupling has no background energy transfer */
     dy[pba->index_bi_rho_idm] = -3.*y[pba->index_bi_rho_idm];
   }
 
   // ET: coupled scf and idm evolution (conformal/disformal)
-  if ((pba->has_scf == _TRUE_) && (pba->has_idm_de == _TRUE_) && (pba->scf_coupling != scf_coupling_momentum)){
+  if (pba->has_idm_de_q == _TRUE_){
     /** - Scalar field equation: \f$ \phi'' + 2 a H \phi' + a^2 dV = 0 \f$  (note H is wrt cosmic time) */
     dy[pba->index_bi_phi_scf] = y[pba->index_bi_phi_prime_scf]/a/H;
     /* ET: Modified KG equation including the coupling: check */
@@ -2864,7 +2888,7 @@ int background_derivs(
   }
 
   // ET: safety for now to compute idm in the uncoupled case but should check consistency with other couplings (will likely fail then)
-  if ((pba->has_idm == _TRUE_) && (pba->has_idm_de == _FALSE_)) {
+  if ((pba->has_idm == _TRUE_) && (pba->has_scf_momentum == _FALSE_) && (pba->has_idm_de_q == _FALSE_)) {
     dy[pba->index_bi_rho_idm] = -3.*y[pba->index_bi_rho_idm];
   }
 
@@ -3174,23 +3198,43 @@ double ddV_scf(struct background *pba,
   }
 }
 
-/* ET: entropy-coupling/source model functions */
+/* ET: momentum-coupling model function F(scf_mom) and derivatives */
 double f_scf(struct background *pba,
-             double phi
+             double scf_mom
              ) {
-  double conv = (1.e-120)*(1.44983e113);
-  return pba->f0_scf*phi*conv;
+  return pba->scf_gamma*scf_mom*scf_mom;
 }
 
 double df_scf(struct background *pba,
+              double scf_mom
+              ) {
+  return 2.*pba->scf_gamma*scf_mom;
+}
+
+double ddf_scf(struct background *pba,
+               double scf_mom
+               ) {
+  (void)scf_mom;
+  return 2.*pba->scf_gamma;
+}
+
+/* ET: entropy-coupling/source model functions */
+double g_scf(struct background *pba,
+             double phi
+             ) {
+  double conv = (1.e-120)*(1.44983e113);
+  return pba->g0_scf*phi*conv;
+}
+
+double dg_scf(struct background *pba,
               double phi
               ) {
   double conv = (1.e-120)*(1.44983e113);
   (void)phi;
-  return pba->f0_scf*conv;
+  return pba->g0_scf*conv;
 }
 
-double ddf_scf(struct background *pba,
+double ddg_scf(struct background *pba,
                double phi
                ) {
   (void)pba;

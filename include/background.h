@@ -151,6 +151,11 @@ struct background
   enum scf_coupling_type scf_coupling; /**< ET: scalar field coupling type */
   enum scf_shooting_target_type scf_shooting_target; /**< ET: shooting target when using explicit scf_* inputs */
   short has_idm_de; /**< ET: coupling between IDM and scalar field */
+  short has_idm_de_q; /**< ET: Q_scf-sector coupling active (conformal/disformal/mixed) */
+  short has_scf_conformal; /**< ET: conformal coupling active */
+  short has_scf_disformal; /**< ET: disformal coupling active */
+  short has_scf_entropy; /**< ET: entropy coupling active */
+  short has_scf_momentum; /**< ET: momentum coupling active */
   double V0_scf;        /**< ET: scalar field potential amplitude */
   double lambda_scf;    /**< ET: scalar field potential slope */
   double V0_scf_2;      /**< ET: second exponential amplitude */
@@ -159,9 +164,9 @@ struct background
   double C0_scf;        /**< ET: conformal coupling amplitude */
   double alpha_scf;     /**< ET: disformal coupling strength */
   double D0_scf;        /**< ET: disformal coupling scale (in meV^-1) */
-  double scf_veta;      /**< ET: momentum-coupling strength for Type-3 style coupling */
+  double scf_gamma;      /**< ET: momentum-coupling strength (Type-3 gamma) */
   /* ET: entropy-coupling/source parameters (merged into IDM flow) */
-  double f0_scf;        /**< entropy force coefficient entering f_scf(phi) */
+  double g0_scf;        /**< entropy force coefficient entering g_scf(phi) */
   double h0_scf;        /**< entropy mixing coefficient entering h_scf(phi) */
   double As_scf;        /**< amplitude of entropy source mode delta_s */
   double ns_scf;        /**< tilt of entropy source mode delta_s */
@@ -229,13 +234,14 @@ struct background
 
   int index_bg_phi_scf;       /**< scalar field value */
   int index_bg_phi_prime_scf; /**< scalar field derivative wrt conformal time */
+  int index_bg_mom_scf;       /**< momentum variable \f$ Z=-\phi'/a \f$ used in momentum coupling */
   int index_bg_V_scf;         /**< scalar field potential V */
   int index_bg_dV_scf;        /**< scalar field potential derivative V' */
   int index_bg_ddV_scf;       /**< scalar field potential second derivative V'' */
   /* ET: entropy-coupling/source-function background slots */
-  int index_bg_f_scf;         /**< entropy function f_scf(phi) */
-  int index_bg_df_scf;        /**< first derivative of f_scf(phi) */
-  int index_bg_ddf_scf;       /**< second derivative of f_scf(phi) */
+  int index_bg_g_scf;         /**< entropy function g_scf(phi) */
+  int index_bg_dg_scf;        /**< first derivative of g_scf(phi) */
+  int index_bg_ddg_scf;       /**< second derivative of g_scf(phi) */
   int index_bg_h_scf;         /**< entropy function h_scf(phi) */
   int index_bg_As_scf;        /**< entropy source amplitude */
   int index_bg_ns_scf;        /**< entropy source tilt */
@@ -642,19 +648,34 @@ extern "C" {
                   double phi
                 );
 
-  /* ET: entropy source functions and parameters */
-  /* ET: entropy coupling/source helper functions */
+  /* ET: momentum coupling helper functions F(scf_mom) and derivatives */
   double f_scf(
                struct background *pba,
-               double phi
+               double scf_mom
                );
 
   double df_scf(
                 struct background *pba,
-                double phi
+                double scf_mom
                 );
 
   double ddf_scf(
+                 struct background *pba,
+                 double scf_mom
+                 );
+
+  /* ET: entropy coupling/source helper functions */
+  double g_scf(
+               struct background *pba,
+               double phi
+               );
+
+  double dg_scf(
+                struct background *pba,
+                double phi
+                );
+
+  double ddg_scf(
                  struct background *pba,
                  double phi
                  );
