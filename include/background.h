@@ -164,7 +164,7 @@ struct background
   double C0_scf;        /**< ET: conformal coupling amplitude */
   double alpha_scf;     /**< ET: disformal coupling strength */
   double D0_scf;        /**< ET: disformal coupling scale (in meV^-1) */
-  double scf_gamma;      /**< ET: momentum-coupling strength (Type-3 gamma) */
+  double scf_gamma0;      /**< ET: momentum-coupling strength (Type-3 gamma) */
   /* ET: entropy-coupling/source parameters (merged into IDM flow) */
   double g0_scf;        /**< entropy force coefficient entering g_scf(phi) */
   double h0_scf;        /**< entropy mixing coefficient entering h_scf(phi) */
@@ -234,15 +234,21 @@ struct background
 
   int index_bg_phi_scf;       /**< scalar field value */
   int index_bg_phi_prime_scf; /**< scalar field derivative wrt conformal time */
-  int index_bg_mom_scf;       /**< momentum variable \f$ Z=-\phi'/a \f$ used in momentum coupling */
   int index_bg_V_scf;         /**< scalar field potential V */
   int index_bg_dV_scf;        /**< scalar field potential derivative V' */
   int index_bg_ddV_scf;       /**< scalar field potential second derivative V'' */
-  /* ET: entropy-coupling/source-function background slots */
+  /* ET: momentum indices */
+  int index_bg_mom_scf;       /**< momentum variable \f$ Z=-\phi'/a \f$ used in momentum coupling */
+  int index_bg_gamma_scf;      /**< momentum-coupling function gamma_scf(Z) */
+  int index_bg_dgamma_scf;     /**< first derivative dgamma_scf/dZ */
+  int index_bg_ddgamma_scf;    /**< second derivative ddgamma_scf/dZ2 */
+  /* ET: entropy indices */
   int index_bg_g_scf;         /**< entropy function g_scf(phi) */
   int index_bg_dg_scf;        /**< first derivative of g_scf(phi) */
   int index_bg_ddg_scf;       /**< second derivative of g_scf(phi) */
   int index_bg_h_scf;         /**< entropy function h_scf(phi) */
+  int index_bg_dh_scf;        /**< first derivative of h_scf(phi) */
+  int index_bg_ddh_scf;       /**< second derivative of h_scf(phi) */
   int index_bg_As_scf;        /**< entropy source amplitude */
   int index_bg_ns_scf;        /**< entropy source tilt */
   int index_bg_kp_scf;        /**< entropy source pivot scale */
@@ -252,7 +258,7 @@ struct background
   int index_bg_p_scf;         /**< scalar field pressure */
   int index_bg_p_prime_scf;         /**< scalar field pressure */
 
-  /* ET: Added extra scf indices here */
+  /* ET: conformal and disformal indices */
   int index_bg_C_scf;         /**< scalar field conformal factor C */
   int index_bg_dC_scf;        /**< scalar field conformal factor derivative C' */
   int index_bg_ddC_scf;       /**< scalar field conformal factor second derivative C'' */
@@ -648,21 +654,26 @@ extern "C" {
                   double phi
                 );
 
-  /* ET: momentum coupling helper functions F(scf_mom) and derivatives */
-  double f_scf(
+  /* ET: momentum coupling helper function gamma_scf(scf_mom) and derivatives */
+  double gamma_scf(
                struct background *pba,
                double scf_mom
                );
 
-  double df_scf(
+  double dgamma_scf(
                 struct background *pba,
                 double scf_mom
                 );
 
-  double ddf_scf(
+  double ddgamma_scf(
                  struct background *pba,
                  double scf_mom
                  );
+
+  double dddgamma_scf(
+                   struct background *pba,
+                   double scf_mom
+                   );
 
   /* ET: entropy coupling/source helper functions */
   double g_scf(
@@ -684,6 +695,16 @@ extern "C" {
                struct background *pba,
                double phi
                );
+
+  double dh_scf(
+                struct background *pba,
+                double phi
+                );
+
+  double ddh_scf(
+                 struct background *pba,
+                 double phi
+                 );
 
   double As_scf(
                 struct background *pba

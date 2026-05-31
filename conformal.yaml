@@ -1,7 +1,7 @@
 theory:
   classy:
     # path: /path/to/darkin-class  # change if installing
-    path: /sps/lupm/eteixeir/Codes/darkin-class
+    # path: /sps/lupm/eteixeir/Codes/darkin-class/
     extra_args:
       N_ncdm: 1
       N_ur: 2.0328
@@ -83,6 +83,7 @@ likelihood:
     feedback: true
     wrapper: null
   muse3glike.cobaya.spt3g_2yr_delensed_ee_optimal_pp_muse:
+    python_path: /sps/lupm/eteixeir/Codes/cobaya_data/data/muse_3g_like_march_2025/src
     components:
     - "\u03D5\u03D5"
 prior:
@@ -104,12 +105,12 @@ params:
     latex: E_{\rm cal}
   # Scalar-field parameters
   scf_lambda:
-    prior: {min: 0., max: 5.0}
+    prior: {min: 0., max: 2.0}
     ref: {dist: norm, loc: 0.1, scale: 0.1}
     proposal: 0.05
     latex: \lambda_{\rm scf}
   scf_beta:
-    prior: {min: -1.0, max: 1.0}
+    prior: {min: -2.0, max: 2.0}
     ref: {dist: norm, loc: 0.0, scale: 0.1}
     proposal: 0.05
     latex: \beta_{\rm scf}
@@ -251,5 +252,5 @@ sampler:
     Rminus1_stop: 0.01
     Rminus1_cl_stop: 0.2
     max_tries: 1000000
-output: chains/Coupled_exp
+output: /sps/lupm/eteixeir/Codes/conformal_runs/run0
 stop_at_error: false

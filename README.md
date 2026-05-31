@@ -117,7 +117,17 @@ at least the paper `CLASS II: Approximation schemes <http://arxiv.org/abs/1104.2
 How to use darkin-class
 -----------------------------------
 
-You must set omega_cdm or Omega_cdm to the desired value and f_cdm=0 (check whether f_cdm can be non-zero). Replace with omega_idm = 0.1201075 or equivalent (f_idm=1, check how this is handled). Specify or modify the scf_parameters according to your needs. For the moment scf_parameters=[scf_lambda,scf_V0,...,phi_ini,phi'_ini].
+The coupling workflow (conformal, disformal, mixed, entropy, momentum) is documented here:
+
+- [`doc/input/COUPLINGS.md`](doc/input/COUPLINGS.md)
+
+It includes:
+
+- required background settings (`Omega_scf`, `omega_idm`, `scf_coupling_type`)
+- parameter lists for each coupling type
+- `scf_parameters` ordering for `exp` and `double_exp` potentials
+- explicit `scf_*` input mode vs list mode
+- copy-paste templates and example files in this repo
 
 Support
 -------
